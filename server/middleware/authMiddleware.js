@@ -22,18 +22,25 @@ const protectRoute = asyncHandler(async (req, res, next) => {
       next();
     } catch (error) {
       console.error(error);
-      // You can choose to log the error or perform any other action here
+      return res
+        .status(401)
+        .json({ status: false, message: "Not authorized. Try login again." });
     }
+  } else {
+    return res
+      .status(401)
+      .json({ status: false, message: "Not authorized. Try login again." });
   }
-
-  next(); // Proceed to the next step regardless of the token presence
 });
 
 const isAdminRoute = (req, res, next) => {
   if (req.user && req.user.isAdmin) {
     next();
   } else {
-    next(); // Proceed to the next step even if not authorized as admin
+    return res.status(401).json({
+      status: false,
+      message: "Not authorized as admin. Try login as admin.",
+    });
   }
 };
 

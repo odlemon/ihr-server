@@ -12,6 +12,7 @@ import {
   updateTask,
   updateTaskStage,
 } from "../controllers/taskController.js";
+import { evaluatePerformance } from "../controllers/performanceController.js";
 import { isAdminRoute, protectRoute } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
@@ -23,6 +24,7 @@ router.post("/activity/:id", protectRoute, postTaskActivity);
 router.get("/dashboard", protectRoute, dashboardStatistics);
 router.get("/", protectRoute, getTasks);
 router.get("/:id", protectRoute, getTask);
+router.post("/performance/evaluation", protectRoute, isAdminRoute, evaluatePerformance);
 
 router.put("/create-subtask/:id", protectRoute, isAdminRoute, createSubTask);
 router.put("/update/:id", protectRoute, isAdminRoute, updateTask);

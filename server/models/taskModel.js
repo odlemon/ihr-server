@@ -14,6 +14,17 @@ const taskSchema = new Schema(
       default: "todo",
       enum: ["todo", "in progress", "completed"],
     },
+    status: {
+      type: String,
+      enum: [
+        "Started",
+        "Delayed",
+        "Mid-way",
+        "Complete",
+        "Amber Zone",
+        "Red Zone",
+      ],
+    },
     activities: [
       {
         type: {

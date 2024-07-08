@@ -11,50 +11,70 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
       isTrashed: false,
     }).populate('team', 'name');
 
-    // Group tasks by user
-    const performance = {};
+    // Initialize status counts object with all categories
+    const statusCounts = {
+      completed: 0,
+      'in progress': 0,
+      started: 0,
+      todo: 0,
+      delayed: 0
+    };
+
+    // Count tasks for each status category
     tasks.forEach(task => {
-      task.team.forEach(user => {
-        if (user._id.toString() === userId.toString()) {
-          if (!performance[user._id]) {
-            performance[user._id] = { name: user.name, tasks: [] };
-          }
-          performance[user._id].tasks.push(task);
-        }
-      });
+      if (statusCounts.hasOwnProperty(task.stage)) {
+        statusCounts[task.stage]++;
+      }
     });
 
-    const userPerformance = performance[userId];
+    // Fetch user details
+    const userPerformance = tasks.length > 0 ? tasks[0].team[0] : null;
     if (!userPerformance) {
       return res.status(404).json({ status: false, message: "User not found or no tasks assigned." });
     }
 
-    const totalTasks = userPerformance.tasks.length;
-    const statusCounts = userPerformance.tasks.reduce((counts, task) => {
-      counts[task.stage] = (counts[task.stage] || 0) + 1;
-      return counts;
-    }, {});
+    const totalTasks = tasks.length;
 
-    const rating = (
-      (statusCounts['completed'] || 0) * 5 +
-      (statusCounts['in progress'] || 0) * 4 +
-      (statusCounts['started'] || 0) * 3 +
-      (statusCounts['todo'] || 0) * 2 +
-      (statusCounts['delayed'] || 0) * 1
-    ) / totalTasks;
+    // Calculate overall rating based on all status categories
+    let totalWeightedScore = 0;
+    Object.keys(statusCounts).forEach(status => {
+      const weight = getStatusWeight(status);
+      totalWeightedScore += statusCounts[status] * weight;
+    });
 
+    const overallRating = totalWeightedScore / totalTasks;
+
+    // Construct response object
     const performanceRating = {
       user: userPerformance.name,
-      rating: rating.toFixed(2),
+      overallRating: overallRating.toFixed(2),
       statusCounts,
       totalTasks,
     };
 
+    // Send successful response
     res.status(200).json({ status: true, performance: performanceRating });
   } catch (error) {
     console.error("Error in evaluatePerformance:", error);
     return res.status(400).json({ status: false, message: error.message });
   }
 });
+
+function getStatusWeight(status) {
+  switch (status) {
+    case 'completed':
+      return 5;
+    case 'in progress':
+      return 4;
+    case 'started':
+      return 3;
+    case 'todo':
+      return 2;
+    case 'delayed':
+      return 1;
+    default:
+      return 0;
+  }
+}
 
 export { evaluatePerformance };

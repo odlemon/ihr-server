@@ -55,6 +55,7 @@ const registerUser = asyncHandler(async (req, res) => {
     password,
     isAdmin,
     role,
+    department,
     title,
   });
 
@@ -90,7 +91,7 @@ const logoutUser = (req, res) => {
 
 //   if (user) {
 //     res.json({ ...user });
-//   } else {
+//   } else { 
 //     res.status(404);
 //     throw new Error("User not found");
 //   }
@@ -175,6 +176,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     // user.email = req.body.email || user.email;
     user.title = req.body.title || user.title;
     user.role = req.body.role || user.role;
+    user.department = req.body.department || user.department;
 
     const updatedUser = await user.save();
 

@@ -30,14 +30,7 @@ const taskSchema = new Schema(
         type: {
           type: String,
           default: "assigned",
-          enum: [
-            "assigned",
-            "started",
-            "in progress",
-            "bug",
-            "completed",
-            "commented",
-          ],
+          enum: ["todo", "in progress", "completed"],
         },
         activity: String,
         date: { type: Date, default: new Date() },
@@ -54,6 +47,7 @@ const taskSchema = new Schema(
     assets: [String],
     team: [{ type: Schema.Types.ObjectId, ref: "User" }],
     isTrashed: { type: Boolean, default: false },
+    monetaryValue: { type: Number, default: 0 },
   },
   { timestamps: true }
 );

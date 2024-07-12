@@ -48,7 +48,6 @@ const taskSchema = new Schema(
     team: [{ type: Schema.Types.ObjectId, ref: "User" }],
     isTrashed: { type: Boolean, default: false },
     monetaryValue: { type: Number, default: 0 },
-    duration: { type: Number }, // New field for duration
   },
   { timestamps: true }
 );

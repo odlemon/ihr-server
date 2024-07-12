@@ -2,6 +2,49 @@ import asyncHandler from "express-async-handler";
 import User from "../models/userModel.js";
 import createJWT from "../utils/index.js";
 import Notice from "../models/notis.js";
+import crypto from 'crypto';
+import nodemailer from 'nodemailer';
+
+// Initialize Nodemailer transporter
+const transporter = nodemailer.createTransport({
+  host: "smtp.mailgun.org",
+  port: 587,
+  secure: false, // Use TLS
+  auth: {
+    user: "postmaster@sandboxd1524ac95a88449cb845c73e0ae7d31e.mailgun.org",
+    pass: "d86712064d008e1152169a9b1cff9d81-32a0fef1-c8a4040f" // Store this in your environment variables
+  }
+});
+
+function generateRandomPassword(length = 10) {
+  return crypto.randomBytes(Math.ceil(length / 2))
+    .toString('hex')
+    .slice(0, length);
+}
+
+async function sendLoginEmail(email, password) {
+  const mailOptions = {
+    from: 'Admin <postmaster@sandboxd1524ac95a88449cb845c73e0ae7d31e.mailgun.org>',
+    to: email,
+    subject: 'Your New Account Details',
+    text: `Your account has been created. Your login details are:
+    Email: ${email}
+    Password: ${password}
+    
+    Please change your password after your first login.`,
+    html: `<p>Your account has been created. Your login details are:</p>
+    <p><strong>Email:</strong> ${email}</p>
+    <p><strong>Password:</strong> ${password}</p>
+    <p>Please change your password after your first login.</p>`
+  };
+
+  try {
+    const info = await transporter.sendMail(mailOptions);
+    console.log('Email sent successfully:', info.messageId);
+  } catch (error) {
+    console.error('Error sending email:', error);
+  }
+}
 
 // POST request - login user
 const loginUser = asyncHandler(async (req, res) => {
@@ -39,7 +82,7 @@ const loginUser = asyncHandler(async (req, res) => {
 
 // POST - Register a new user
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, password, isAdmin, role, title } = req.body;
+  const { name, email, isAdmin, role, title, department } = req.body;
 
   const userExists = await User.findOne({ email });
 
@@ -48,6 +91,9 @@ const registerUser = asyncHandler(async (req, res) => {
       .status(400)
       .json({ status: false, message: "Email address already exists" });
   }
+
+  // Generate a random password
+  const password = generateRandomPassword();
 
   const user = await User.create({
     name,
@@ -60,11 +106,17 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (user) {
+    // Send email with login details
+    await sendLoginEmail(email, password);
+
     isAdmin ? createJWT(res, user._id) : null;
 
-    user.password = undefined;
+    user.password = password;
 
-    res.status(201).json(user);
+    res.status(201).json({
+      ...user.toObject(),
+      message: "User registered successfully. Login details sent to email."
+    });
   } else {
     return res
       .status(400)
@@ -80,22 +132,6 @@ const logoutUser = (req, res) => {
   });
   res.status(200).json({ message: "Logged out successfully" });
 };
-
-// @GET -   Get user profile
-// const getUserProfile = asyncHandler(async (req, res) => {
-//   const { userId } = req.user;
-
-//   const user = await User.findById(userId);
-
-//   user.password = undefined;
-
-//   if (user) {
-//     res.json({ ...user });
-//   } else { 
-//     res.status(404);
-//     throw new Error("User not found");
-//   }
-// });
 
 const getTeamList = asyncHandler(async (req, res) => {
   const { search } = req.query;
@@ -223,7 +259,7 @@ const changeUserPassword = asyncHandler(async (req, res) => {
   if (userId === "65ff94c7bb2de638d0c73f63") {
     return res.status(404).json({
       status: false,
-      message: "This is a test user. You can not chnage password. Thank you!!!",
+      message: "This is a test user. You can not change password. Thank you!!!",
     });
   }
 
@@ -238,7 +274,7 @@ const changeUserPassword = asyncHandler(async (req, res) => {
 
     res.status(201).json({
       status: true,
-      message: `Password chnaged successfully.`,
+      message: `Password changed successfully.`,
     });
   } else {
     res.status(404).json({ status: false, message: "User not found" });

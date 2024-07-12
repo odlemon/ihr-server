@@ -2,11 +2,12 @@ import asyncHandler from "express-async-handler";
 import Notice from "../models/notis.js";
 import Task from "../models/taskModel.js";
 import User from "../models/userModel.js";
+import moment from 'moment';
 
 const createTask = asyncHandler(async (req, res) => {
   try {
     const { userId } = req.user;
-    const { title, team, stage, date, priority, assets, monetaryValue, duration } = req.body;
+    const { title, team, stage, date, priority, assets, monetaryValue } = req.body;
 
     // Alert users of the task
     let text = "New task has been assigned to you";
@@ -35,7 +36,6 @@ const createTask = asyncHandler(async (req, res) => {
       assets,
       activities: [activity], // Note: Wrap activity in array if not already
       monetaryValue,
-      duration, // Include duration field
     });
 
     await Notice.create({
@@ -52,6 +52,34 @@ const createTask = asyncHandler(async (req, res) => {
     return res.status(400).json({ status: false, message: error.message });
   }
 });
+
+
+const checkForOverdueTasks = asyncHandler(async (req, res) => {
+  try {
+    const now = new Date();
+    const overdueTasks = await Task.find({
+      isTrashed: false,
+      date: { $lt: now },
+      stage: { $ne: 'completed' },
+    });
+
+    for (const task of overdueTasks) {
+      const text = `Task "${task.title}" is overdue. Please check and act accordingly. The task date was ${moment(task.date).format('LL')}. Thank you!`;
+
+      await Notice.create({
+        team: task.team,
+        text,
+        task: task._id,
+      });
+    }
+
+    res.status(200).json({ status: true, message: 'Overdue tasks checked successfully.' });
+  } catch (error) {
+    console.error('Error checking for overdue tasks:', error);
+    res.status(500).json({ status: false, message: 'Error checking for overdue tasks.' });
+  }
+});
+
 
 const duplicateTask = asyncHandler(async (req, res) => {
   try {
@@ -84,7 +112,6 @@ const duplicateTask = asyncHandler(async (req, res) => {
       ...task.toObject(),
       title: "Duplicate - " + task.title,
       activities: [activity], // Wrap activity in array
-      duration: task.duration, // Include duration field
     });
 
     await Notice.create({
@@ -103,7 +130,7 @@ const duplicateTask = asyncHandler(async (req, res) => {
 
 const updateTask = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { title, date, team, stage, priority, assets, monetaryValue, duration } = req.body;
+  const { title, date, team, stage, priority, assets, monetaryValue } = req.body;
 
   try {
     const task = await Task.findById(id);
@@ -115,7 +142,7 @@ const updateTask = asyncHandler(async (req, res) => {
     task.stage = stage.toLowerCase();
     task.team = team;
     task.monetaryValue = monetaryValue;
-    task.duration = duration; // Include duration field
+  
 
     await task.save();
 
@@ -147,7 +174,7 @@ const updateTaskStage = asyncHandler(async (req, res) => {
 });
 
 const createSubTask = asyncHandler(async (req, res) => {
-  const { title, tag, date, duration } = req.body;
+  const { title, tag, date } = req.body;
   const { id } = req.params;
 
   try {
@@ -155,7 +182,6 @@ const createSubTask = asyncHandler(async (req, res) => {
       title,
       date,
       tag,
-      duration, // Include duration field if applicable
     };
 
     const task = await Task.findById(id);
@@ -321,6 +347,7 @@ const deleteRestoreTask = asyncHandler(async (req, res) => {
   }
 });
 
+
 const dashboardStatistics = asyncHandler(async (req, res) => {
   try {
     const { userId, isAdmin } = req.user;
@@ -330,39 +357,107 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
       ? await Task.find({
           isTrashed: false,
         })
+          .populate({
+            path: "team",
+            select: "name role title email department",
+          })
+          .sort({ _id: -1 })
       : await Task.find({
           isTrashed: false,
           team: { $all: [userId] },
-        });
+        })
+          .populate({
+            path: "team",
+            select: "name role title email department",
+          })
+          .sort({ _id: -1 });
 
-    // Calculate statistics
-    let totalTasks = allTasks.length;
-    let completedTasks = allTasks.filter((task) => task.stage === "completed")
-      .length;
-    let inProgressTasks = allTasks.filter(
-      (task) => task.stage === "in progress"
-    ).length;
-    let todoTasks = allTasks.filter((task) => task.stage === "todo").length;
-    let delayedTasks = allTasks.filter((task) => task.stage === "delayed")
-      .length;
+    const users = await User.find({ isActive: true })
+      .select("name title role isActive createdAt")
+      .limit(10)
+      .sort({ _id: -1 });
 
-    // Prepare statistics object
-    const statistics = {
+    // Group tasks by stage and calculate counts
+    const groupedTasks = allTasks?.reduce((result, task) => {
+      const stage = task.stage;
+
+      if (!result[stage]) {
+        result[stage] = 1;
+      } else {
+        result[stage] += 1;
+      }
+
+      return result;
+    }, {});
+
+    const graphData = Object.entries(
+      allTasks?.reduce((result, task) => {
+        const { priority } = task;
+        result[priority] = (result[priority] || 0) + 1;
+        return result;
+      }, {})
+    ).map(([name, total]) => ({ name, total }));
+
+    // Calculate total tasks
+    const totalTasks = allTasks.length;
+    const last10Task = allTasks?.slice(0, 10);
+
+    // Calculate department performance
+    const departmentPerformance = allTasks?.reduce((result, task) => {
+      task.team.forEach((member) => {
+        const department = member.department;
+        if (!department) return; // Skip if department is not defined
+
+        if (!result[department]) {
+          result[department] = { completed: 0, overdue: 0, inProgress: 0 };
+        }
+
+        const statusLower = task.status?.toLowerCase();
+        if (statusLower === 'complete' || task.stage === 'completed') {
+          result[department].completed += 1;
+        } else if (statusLower === 'in progress' || task.stage === 'in progress') {
+          result[department].inProgress += 1;
+        } else if (new Date(task.date) < new Date()) {
+          result[department].overdue += 1;
+        }
+      });
+      return result;
+    }, {});
+
+    // Calculate total monetary values for all objectives and completed tasks
+    const totalMonetaryValue = allTasks.reduce((total, task) => total + (task.monetaryValue || 0), 0);
+    const completedMonetaryValue = allTasks.reduce((total, task) => {
+      const statusLower = task.status?.toLowerCase();
+      if (statusLower === 'complete' || task.stage === 'completed') {
+        return total + (task.monetaryValue || 0);
+      }
+      return total;
+    }, 0);
+
+    // Calculate the overall revenue target and revenue achieved
+    const revenueTarget = totalMonetaryValue;
+    const revenueAchieved = completedMonetaryValue;
+
+    // Combine results into a summary object
+    const summary = {
       totalTasks,
-      completedTasks,
-      inProgressTasks,
-      todoTasks,
-      delayedTasks,
+      last10Task,
+      users: isAdmin ? users : [],
+      tasks: groupedTasks,
+      graphData,
+      departmentPerformance,
+      revenueTarget,
+      revenueAchieved,
     };
 
-    res.status(200).json({
-      status: true,
-      statistics,
-    });
+    res.status(200).json({ status: true, ...summary, message: "Successfully." });
   } catch (error) {
+    console.log(error);
     return res.status(400).json({ status: false, message: error.message });
   }
 });
+
+
 
 export {
   createSubTask,
@@ -376,4 +471,5 @@ export {
   trashTask,
   updateTask,
   updateTaskStage,
+  checkForOverdueTasks,
 };

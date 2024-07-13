@@ -106,8 +106,8 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (user) {
-    // Send email with login details
-    await sendLoginEmail(email, password);
+    // Commenting out email sending
+    // await sendLoginEmail(email, password);
 
     isAdmin ? createJWT(res, user._id) : null;
 
@@ -115,7 +115,8 @@ const registerUser = asyncHandler(async (req, res) => {
 
     res.status(201).json({
       ...user.toObject(),
-      message: "User registered successfully. Login details sent to email."
+      password,
+      message: "User registered successfully. Login details are included in the response."
     });
   } else {
     return res

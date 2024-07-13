@@ -2,7 +2,7 @@ import asyncHandler from "express-async-handler";
 import Notice from "../models/notis.js";
 import Task from "../models/taskModel.js";
 import User from "../models/userModel.js";
-import moment from 'moment';
+//import moment from 'moment';
 
 const createTask = asyncHandler(async (req, res) => {
   try {
@@ -54,7 +54,7 @@ const createTask = asyncHandler(async (req, res) => {
 });
 
 
-const checkForOverdueTasks = asyncHandler(async (req, res) => {
+/*const checkForOverdueTasks = asyncHandler(async (req, res) => {
   try {
     const now = new Date();
     const overdueTasks = await Task.find({
@@ -78,7 +78,7 @@ const checkForOverdueTasks = asyncHandler(async (req, res) => {
     console.error('Error checking for overdue tasks:', error);
     res.status(500).json({ status: false, message: 'Error checking for overdue tasks.' });
   }
-});
+});*/
 
 
 const duplicateTask = asyncHandler(async (req, res) => {
@@ -471,5 +471,4 @@ export {
   trashTask,
   updateTask,
   updateTaskStage,
-  checkForOverdueTasks,
 };

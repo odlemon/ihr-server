@@ -11,7 +11,6 @@ import {
   trashTask,
   updateTask,
   updateTaskStage,
-  checkForOverdueTasks,
 } from "../controllers/taskController.js";
 import { evaluatePerformance } from "../controllers/performanceController.js";
 import { isAdminRoute, protectRoute } from "../middleware/authMiddleware.js";
@@ -25,7 +24,6 @@ router.post("/activity/:id", protectRoute, postTaskActivity);
 router.get("/dashboard", protectRoute, dashboardStatistics);
 router.get("/", protectRoute, getTasks);
 router.get("/:id", protectRoute, getTask);
-router.get("/task-overdue", protectRoute, checkForOverdueTasks);
 router.post("/performance/evaluation", protectRoute, isAdminRoute, evaluatePerformance);
 
 router.put("/create-subtask/:id", protectRoute, isAdminRoute, createSubTask);

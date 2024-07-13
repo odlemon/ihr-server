@@ -11,6 +11,11 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
       isTrashed: false,
     }).populate('team', 'name');
 
+    // Check if no tasks are assigned to the user
+    if (tasks.length === 0) {
+      return res.status(200).json({ status: false, message: "User has no tasks assigned." });
+    }
+
     // Initialize status counts object with all categories
     const statusCounts = {
       completed: 0,
@@ -30,7 +35,7 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
     // Fetch user details
     const userPerformance = tasks.length > 0 ? tasks[0].team[0] : null;
     if (!userPerformance) {
-      return res.status(404).json({ status: false, message: "User not found or no tasks assigned." });
+      return res.status(404).json({ status: false, message: "User not found." });
     }
 
     const totalTasks = tasks.length;

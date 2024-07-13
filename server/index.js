@@ -17,7 +17,7 @@ const app = express();
 
 app.use(
   cors({
-    origin: ["http://localhost:3000", "http://localhost:3001", "https://task-manager-eight-rosy.vercel.app"],
+    origin: true, 
     methods: ["GET", "POST", "DELETE", "PUT"],
     credentials: true,
   })

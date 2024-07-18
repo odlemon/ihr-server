@@ -150,10 +150,11 @@ const getTeamList = asyncHandler(async (req, res) => {
     query = { ...query, ...searchQuery };
   }
 
-  const user = await User.find(query).select("name title role email isActive");
+  const users = await User.find(query).select("name title role email isActive department");
 
-  res.status(201).json(user);
+  res.status(201).json(users);
 });
+
 
 // @GET  - get user notifications
 const getNotificationsList = asyncHandler(async (req, res) => {

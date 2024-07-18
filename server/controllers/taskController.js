@@ -347,7 +347,6 @@ const deleteRestoreTask = asyncHandler(async (req, res) => {
   }
 });
 
-
 const dashboardStatistics = asyncHandler(async (req, res) => {
   try {
     const { userId, isAdmin } = req.user;
@@ -372,13 +371,20 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
           })
           .sort({ _id: -1 });
 
+    // Add department field to each task
+    const tasksWithDepartments = allTasks.map((task) => {
+      const departments = task.team.map((member) => member.department).filter(Boolean);
+      const uniqueDepartments = [...new Set(departments)];
+      return { ...task.toObject(), department: uniqueDepartments.join(", ") };
+    });
+
     const users = await User.find({ isActive: true })
-      .select("name title role isActive createdAt")
+      .select("name title role isActive department createdAt")
       .limit(10)
       .sort({ _id: -1 });
 
     // Group tasks by stage and calculate counts
-    const groupedTasks = allTasks?.reduce((result, task) => {
+    const groupedTasks = tasksWithDepartments?.reduce((result, task) => {
       const stage = task.stage;
 
       if (!result[stage]) {
@@ -391,7 +397,7 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     }, {});
 
     const graphData = Object.entries(
-      allTasks?.reduce((result, task) => {
+      tasksWithDepartments?.reduce((result, task) => {
         const { priority } = task;
         result[priority] = (result[priority] || 0) + 1;
         return result;
@@ -399,11 +405,11 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     ).map(([name, total]) => ({ name, total }));
 
     // Calculate total tasks
-    const totalTasks = allTasks.length;
-    const last10Task = allTasks?.slice(0, 10);
+    const totalTasks = tasksWithDepartments.length;
+    const last10Task = tasksWithDepartments?.slice(0, 10);
 
     // Calculate department performance
-    const departmentPerformance = allTasks?.reduce((result, task) => {
+    const departmentPerformance = tasksWithDepartments?.reduce((result, task) => {
       task.team.forEach((member) => {
         const department = member.department;
         if (!department) return; // Skip if department is not defined
@@ -425,8 +431,8 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     }, {});
 
     // Calculate total monetary values for all objectives and completed tasks
-    const totalMonetaryValue = allTasks.reduce((total, task) => total + (task.monetaryValue || 0), 0);
-    const completedMonetaryValue = allTasks.reduce((total, task) => {
+    const totalMonetaryValue = tasksWithDepartments.reduce((total, task) => total + (task.monetaryValue || 0), 0);
+    const completedMonetaryValue = tasksWithDepartments.reduce((total, task) => {
       const statusLower = task.status?.toLowerCase();
       if (statusLower === 'complete' || task.stage === 'completed') {
         return total + (task.monetaryValue || 0);
@@ -435,7 +441,7 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     }, 0);
 
     // Calculate the overall revenue target and revenue achieved
-    const revenueTarget = totalMonetaryValue;
+    const revenueTarget = totalMonetaryValue - completedMonetaryValue;
     const revenueAchieved = completedMonetaryValue;
 
     // Combine results into a summary object
@@ -446,6 +452,8 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
       tasks: groupedTasks,
       graphData,
       departmentPerformance,
+      totalMonetaryValue,
+      completedMonetaryValue,
       revenueTarget,
       revenueAchieved,
     };
@@ -456,6 +464,8 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     return res.status(400).json({ status: false, message: error.message });
   }
 });
+
+
 
 
 

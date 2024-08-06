@@ -1,20 +1,20 @@
 import express from "express";
 import {
-  createKPI,
-  deleteKPI,
-  getKPIById,
-  getKPIs,
-  updateKPI,
-} from "../controllers/kpiController.js"; // Adjust the path as necessary
+  createBranch,
+  deleteBranch,
+  getBranchById,
+  getBranches,
+  updateBranch,
+} from "../controllers/BranchController.js";
 import { isAdminRoute, protectRoute } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
 // Routes for KPI operations
-router.post("/create", protectRoute, isAdminRoute, createKPI);
-router.get("/get", protectRoute, isAdminRoute, getKPIs);
-router.get("/detail/:id", protectRoute, isAdminRoute, getKPIById);
-router.put("/update/:id", protectRoute, isAdminRoute, updateKPI);
-router.delete("/delete/:id", protectRoute, isAdminRoute, deleteKPI);
+router.post("/create", protectRoute, isAdminRoute, createBranch);
+router.get("/get", protectRoute, isAdminRoute, getBranches);
+router.get("/detail/:id", protectRoute, isAdminRoute, getBranchById);
+router.put("/update/:id", protectRoute, isAdminRoute, updateBranch);
+router.delete("/delete/:id", protectRoute, isAdminRoute, deleteBranch);
 
 export default router;

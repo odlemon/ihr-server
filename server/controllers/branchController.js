@@ -34,16 +34,31 @@ const getBranches = asyncHandler(async (req, res) => {
 
 // GET - Get a single department by ID
 const getBranchById = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-    
-  const branch = await Branch.findById(id);
+  try {
+    const { id } = req.params;
 
-  if (branch) {
-    res.status(200).json(branch);
-  } else {
-    res.status(404).json({ status: false, message: "branch not found" });
+    if (!id) {
+      return res.status(400).json({ status: false, message: "No branch ID provided" });
+    }
+
+    const branch = await Branch.findById(id);
+
+    if (branch) {
+      res.status(200).json(branch);
+    } else {
+      res.status(404).json({ status: false, message: "Branch not found" });
+    }
+  } catch (error) {
+    console.error("Error fetching branch details:", error); // Log the error on the server
+    res.status(500).json({
+      status: false,
+      message: "An unexpected error occurred while fetching branch details",
+      error: error.message, // Include the error message for debugging
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined // Include stack trace only in development
+    });
   }
 });
+
 
 // PUT - Update a department
 const updateBranch = asyncHandler(async (req, res) => {

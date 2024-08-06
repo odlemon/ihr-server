@@ -7,9 +7,18 @@ import User from "../models/userModel.js";
 const createTask = asyncHandler(async (req, res) => {
   try {
     const { userId } = req.user;
-    const { title, team, stage, date, priority, assets, monetaryValue } = req.body;
+    const { title, team, stage, date, priority, assets, monetaryValue, kpiId } = req.body;
 
-    // Alert users of the task
+    // Validate KPI if provided
+    let kpi;
+    if (kpiId) {
+      kpi = await KPI.findById(kpiId);
+      if (!kpi) {
+        return res.status(400).json({ status: false, message: "Invalid KPI selected." });
+      }
+    }
+
+    // Construct the alert message
     let text = "New task has been assigned to you";
     if (team?.length > 1) {
       text = text + ` and ${team?.length - 1} others.`;
@@ -17,68 +26,40 @@ const createTask = asyncHandler(async (req, res) => {
 
     text =
       text +
-      ` The task priority is set as ${priority} priority, so check and act accordingly. The task date is ${new Date(
-        date
-      ).toDateString()}. Thank you!!!`;
+      ` The task priority is set as ${priority} priority, so check and act accordingly. The task date is ${new Date(date).toDateString()}. Thank you!!!`;
 
     const activity = {
       type: "todo",
       activity: text,
+      date: new Date(),
       by: userId,
     };
 
+    // Create the task
     const task = await Task.create({
       title,
-      team,
-      stage: stage.toLowerCase(),
       date,
       priority: priority.toLowerCase(),
+      stage: stage.toLowerCase(),
       assets,
-      activities: [activity], // Note: Wrap activity in array if not already
+      activities: [activity],
       monetaryValue,
+      kpi: kpiId ? kpiId : null, // Attach KPI if provided
     });
 
+    // Create notice for the task
     await Notice.create({
       team,
       text,
       task: task._id,
     });
 
-    res
-      .status(200)
-      .json({ status: true, task, message: "Task created successfully." });
+    res.status(200).json({ status: true, task, message: "Task created successfully." });
   } catch (error) {
     console.log(error);
     return res.status(400).json({ status: false, message: error.message });
   }
 });
-
-
-/*const checkForOverdueTasks = asyncHandler(async (req, res) => {
-  try {
-    const now = new Date();
-    const overdueTasks = await Task.find({
-      isTrashed: false,
-      date: { $lt: now },
-      stage: { $ne: 'completed' },
-    });
-
-    for (const task of overdueTasks) {
-      const text = `Task "${task.title}" is overdue. Please check and act accordingly. The task date was ${moment(task.date).format('LL')}. Thank you!`;
-
-      await Notice.create({
-        team: task.team,
-        text,
-        task: task._id,
-      });
-    }
-
-    res.status(200).json({ status: true, message: 'Overdue tasks checked successfully.' });
-  } catch (error) {
-    console.error('Error checking for overdue tasks:', error);
-    res.status(500).json({ status: false, message: 'Error checking for overdue tasks.' });
-  }
-});*/
 
 
 const duplicateTask = asyncHandler(async (req, res) => {
@@ -128,28 +109,43 @@ const duplicateTask = asyncHandler(async (req, res) => {
   }
 });
 
+
 const updateTask = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { title, date, team, stage, priority, assets, monetaryValue } = req.body;
+  const { title, date, team, stage, priority, assets, monetaryValue, kpiId } = req.body;
 
   try {
+    // Find the task by ID
     const task = await Task.findById(id);
 
-    task.title = title;
-    task.date = date;
-    task.priority = priority.toLowerCase();
-    task.assets = assets;
-    task.stage = stage.toLowerCase();
-    task.team = team;
-    task.monetaryValue = monetaryValue;
-  
+    if (!task) {
+      return res.status(404).json({ status: false, message: "Task not found." });
+    }
 
+    // Validate KPI if provided
+    if (kpiId) {
+      const kpi = await KPI.findById(kpiId);
+      if (!kpi) {
+        return res.status(400).json({ status: false, message: "Invalid KPI selected." });
+      }
+    }
+
+    // Update task details
+    task.title = title || task.title;
+    task.date = date || task.date;
+    task.priority = priority ? priority.toLowerCase() : task.priority;
+    task.assets = assets || task.assets;
+    task.stage = stage ? stage.toLowerCase() : task.stage;
+    task.team = team || task.team;
+    task.monetaryValue = monetaryValue || task.monetaryValue;
+    task.kpi = kpiId ? kpiId : task.kpi; // Update KPI if provided
+
+    // Save the updated task
     await task.save();
 
-    res
-      .status(200)
-      .json({ status: true, message: "Task updated successfully." });
+    res.status(200).json({ status: true, message: "Task updated successfully.", task });
   } catch (error) {
+    console.error(error);
     return res.status(400).json({ status: false, message: error.message });
   }
 });
@@ -464,10 +460,6 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     return res.status(400).json({ status: false, message: error.message });
   }
 });
-
-
-
-
 
 export {
   createSubTask,

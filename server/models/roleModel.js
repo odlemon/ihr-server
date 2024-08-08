@@ -1,5 +1,5 @@
 import mongoose, { Schema } from "mongoose";
-import Branch from "./branchModel.js"; // Import the Branch model
+import Branch from "./branchModel.js";
 
 const permissionSchema = new Schema({
   name: { type: String, required: true },
@@ -11,7 +11,7 @@ const roleSchema = new Schema(
     name: { type: String, required: true, unique: true },
     permissions: [permissionSchema],
     description: { type: String },
-    branch: { type: Schema.Types.ObjectId, ref: "Branch", required: true }, // Reference to Branch
+    branch: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
   },
   { timestamps: true }
 );

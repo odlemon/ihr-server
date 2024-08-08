@@ -5,12 +5,11 @@ import {
   getBranchById,
   getBranches,
   updateBranch,
-} from "../controllers/BranchController.js";
+} from "../controllers/branchController.js";
 import { isAdminRoute, protectRoute } from "../middleware/authMiddleware.js";
 
 const router = express.Router();
 
-// Routes for KPI operations
 router.post("/create", protectRoute, isAdminRoute, createBranch);
 router.get("/get", protectRoute, isAdminRoute, getBranches);
 router.get("/detail/:id", protectRoute, isAdminRoute, getBranchById);

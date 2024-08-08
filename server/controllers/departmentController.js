@@ -1,18 +1,15 @@
 import asyncHandler from "express-async-handler";
 import Department from "../models/departmentModel.js";
-import Branch from "../models/branchModel.js"; // Import the Branch model
+import Branch from "../models/branchModel.js";
 
-// POST - Create a new department
 const createDepartment = asyncHandler(async (req, res) => {
   const { name, description, branchId } = req.body;
 
-  // Validate that the branch exists
   const branch = await Branch.findById(branchId);
   if (!branch) {
     return res.status(400).json({ status: false, message: "Branch not found" });
   }
 
-  // Check if department already exists
   const departmentExists = await Department.findOne({ name });
 
   if (departmentExists) {
@@ -21,11 +18,10 @@ const createDepartment = asyncHandler(async (req, res) => {
       .json({ status: false, message: "Department already exists" });
   }
 
-  // Create new department
   const department = await Department.create({
     name,
     description,
-    branch: branchId, // Set the branch reference
+    branch: branchId, 
   });
 
   if (department) {
@@ -35,29 +31,30 @@ const createDepartment = asyncHandler(async (req, res) => {
   }
 });
 
-// GET - Get all departments or filter by branchId
 const getDepartments = asyncHandler(async (req, res) => {
-  const { branchId } = req.body; // Extract branchId from request body
+  const { branchId } = req.body;
 
-  // Check if branchId is provided
   if (!branchId) {
     return res.status(400).json({ message: "branchId is required" });
   }
 
   const query = { branch: branchId };
 
-  // Fetch departments based on branchId and populate branch field
   const departments = await Department.find(query).populate('branch');
 
   res.status(200).json(departments);
 });
 
+const getAllDepartments = asyncHandler(async (req, res) => {
+  const departments = await Department.find().populate('branch');
 
-// GET - Get a single department by ID
+  res.status(200).json(departments);
+});
+
 const getDepartmentById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const department = await Department.findById(id).populate('branch'); // Populate branch field
+  const department = await Department.findById(id).populate('branch');
 
   if (department) {
     res.status(200).json(department);
@@ -66,7 +63,6 @@ const getDepartmentById = asyncHandler(async (req, res) => {
   }
 });
 
-// PUT - Update a department
 const updateDepartment = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, description, branchId } = req.body;
@@ -77,7 +73,6 @@ const updateDepartment = asyncHandler(async (req, res) => {
     department.name = name || department.name;
     department.description = description || department.description;
 
-    // Update branch if provided in the request body
     if (branchId) {
       const branch = await Branch.findById(branchId);
       if (!branch) {
@@ -86,7 +81,7 @@ const updateDepartment = asyncHandler(async (req, res) => {
       department.branch = branchId;
     }
 
-    const updatedDepartment = await department.save(); // Use .save() on the instance
+    const updatedDepartment = await department.save();
 
     res.status(200).json({
       status: true,
@@ -98,7 +93,6 @@ const updateDepartment = asyncHandler(async (req, res) => {
   }
 });
 
-// DELETE - Delete a department
 const deleteDepartment = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -113,4 +107,5 @@ export {
   getDepartmentById,
   updateDepartment,
   deleteDepartment,
+  getAllDepartments,
 };

@@ -1,11 +1,11 @@
 import mongoose, { Schema } from "mongoose";
-import Branch from "./branchModel.js"; // Import the Branch model
+import Branch from "./branchModel.js";
 
 const departmentSchema = new Schema(
   {
     name: { type: String, required: true, unique: true },
     description: { type: String },
-    branch: { type: Schema.Types.ObjectId, ref: "Branch", required: true }, // Reference to Branch
+    branch: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
   },
   { timestamps: true }
 );

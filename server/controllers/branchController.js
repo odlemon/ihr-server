@@ -1,7 +1,6 @@
 import asyncHandler from "express-async-handler";
 import Branch from "../models/branchModel.js";
 
-// POST - Create a new department
 const createBranch = asyncHandler(async (req, res) => {
   const { name, description } = req.body;
 
@@ -25,14 +24,12 @@ const createBranch = asyncHandler(async (req, res) => {
   }
 });
 
-// GET - Get all branches
 const getBranches = asyncHandler(async (req, res) => {
   const branches = await Branch.find();
 
   res.status(200).json(branches);
 });
 
-// GET - Get a single department by ID
 const getBranchById = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
@@ -49,12 +46,12 @@ const getBranchById = asyncHandler(async (req, res) => {
       res.status(404).json({ status: false, message: "Branch not found" });
     }
   } catch (error) {
-    console.error("Error fetching branch details:", error); // Log the error on the server
+    console.error("Error fetching branch details:", error);
     res.status(500).json({
       status: false,
       message: "An unexpected error occurred while fetching branch details",
-      error: error.message, // Include the error message for debugging
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined // Include stack trace only in development
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });

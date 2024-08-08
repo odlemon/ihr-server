@@ -1,9 +1,14 @@
 import asyncHandler from "express-async-handler";
 import Role from "../models/roleModel.js";
+import Branch from "../models/branchModel.js";
 
-// POST - Create a new role
 const createRole = asyncHandler(async (req, res) => {
-  const { name, permissions, description } = req.body;
+  const { name, permissions, description, branchId } = req.body;
+
+  const branch = await Branch.findById(branchId);
+  if (!branch) {
+    return res.status(400).json({ status: false, message: "Branch not found" });
+  }
 
   const roleExists = await Role.findOne({ name });
 
@@ -15,8 +20,9 @@ const createRole = asyncHandler(async (req, res) => {
 
   const role = await Role.create({
     name,
-    permissions, // Assuming permissions are sent in the format [{ name: "permission_name", value: true/false }, ...]
+    permissions, 
     description,
+    branch: branchId,
   });
 
   if (role) {
@@ -26,18 +32,28 @@ const createRole = asyncHandler(async (req, res) => {
   }
 });
 
-// GET - Get all roles
 const getRoles = asyncHandler(async (req, res) => {
-  const roles = await Role.find();
+  const { branchId } = req.body;
+  if (!branchId) {
+    return res.status(400).json({ message: "branchId is required" });
+  }
+
+  const query = { branch: branchId }; 
+  const roles = await Role.find(query).populate('branch');
 
   res.status(200).json(roles);
 });
 
-// GET - Get a single role by ID
+const getAllRoles = asyncHandler(async (req, res) => {
+  const roles = await Role.find().populate('branch');
+
+  res.status(200).json(roles);
+});
+
 const getRoleById = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
-  const role = await Role.findById(id);
+  const role = await Role.findById(id).populate('branch'); 
 
   if (role) {
     res.status(200).json(role);
@@ -46,10 +62,9 @@ const getRoleById = asyncHandler(async (req, res) => {
   }
 });
 
-// PUT - Update a role
 const updateRole = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, permissions, description } = req.body;
+  const { name, permissions, description, branchId } = req.body;
 
   const role = await Role.findById(id);
 
@@ -57,9 +72,16 @@ const updateRole = asyncHandler(async (req, res) => {
     role.name = name || role.name;
     role.description = description || role.description;
 
-    // Update permissions if provided in the request body
     if (permissions) {
       role.permissions = permissions;
+    }
+
+    if (branchId) {
+      const branch = await Branch.findById(branchId);
+      if (!branch) {
+        return res.status(400).json({ status: false, message: "Branch not found" });
+      }
+      role.branch = branchId;
     }
 
     const updatedRole = await role.save();
@@ -74,7 +96,6 @@ const updateRole = asyncHandler(async (req, res) => {
   }
 });
 
-// DELETE - Delete a role
 const deleteRole = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -89,4 +110,5 @@ export {
   getRoleById,
   updateRole,
   deleteRole,
+  getAllRoles,
 };

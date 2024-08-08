@@ -3,18 +3,6 @@ import User from "../models/userModel.js";
 import createJWT from "../utils/index.js";
 import Notice from "../models/notis.js";
 import crypto from 'crypto';
-import nodemailer from 'nodemailer';
-
-// Initialize Nodemailer transporter
-const transporter = nodemailer.createTransport({
-  host: "smtp.mailgun.org",
-  port: 587,
-  secure: false, // Use TLS
-  auth: {
-    user: "postmaster@sandboxd1524ac95a88449cb845c73e0ae7d31e.mailgun.org",
-    pass: "d86712064d008e1152169a9b1cff9d81-32a0fef1-c8a4040f" // Store this in your environment variables
-  }
-});
 
 function generateRandomPassword(length = 10) {
   return crypto.randomBytes(Math.ceil(length / 2))
@@ -22,31 +10,6 @@ function generateRandomPassword(length = 10) {
     .slice(0, length);
 }
 
-async function sendLoginEmail(email, password) {
-  const mailOptions = {
-    from: 'Admin <postmaster@sandboxd1524ac95a88449cb845c73e0ae7d31e.mailgun.org>',
-    to: email,
-    subject: 'Your New Account Details',
-    text: `Your account has been created. Your login details are:
-    Email: ${email}
-    Password: ${password}
-    
-    Please change your password after your first login.`,
-    html: `<p>Your account has been created. Your login details are:</p>
-    <p><strong>Email:</strong> ${email}</p>
-    <p><strong>Password:</strong> ${password}</p>
-    <p>Please change your password after your first login.</p>`
-  };
-
-  try {
-    const info = await transporter.sendMail(mailOptions);
-    console.log('Email sent successfully:', info.messageId);
-  } catch (error) {
-    console.error('Error sending email:', error);
-  }
-}
-
-// POST request - login user
 const loginUser = asyncHandler(async (req, res) => {
   const { email, password } = req.body;
 
@@ -80,7 +43,6 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 });
 
-// POST - Register a new user
 const registerUser = asyncHandler(async (req, res) => {
   const { name, email, isAdmin, role, title, department } = req.body;
 
@@ -92,7 +54,6 @@ const registerUser = asyncHandler(async (req, res) => {
       .json({ status: false, message: "Email address already exists" });
   }
 
-  // Generate a random password
   const password = generateRandomPassword();
 
   const user = await User.create({
@@ -106,9 +67,6 @@ const registerUser = asyncHandler(async (req, res) => {
   });
 
   if (user) {
-    // Commenting out email sending
-    // await sendLoginEmail(email, password);
-
     isAdmin ? createJWT(res, user._id) : null;
 
     user.password = password;
@@ -125,7 +83,6 @@ const registerUser = asyncHandler(async (req, res) => {
   }
 });
 
-// POST -  Logout user / clear cookie
 const logoutUser = (req, res) => {
   res.cookie("token", "", {
     httpOnly: true,
@@ -155,8 +112,6 @@ const getTeamList = asyncHandler(async (req, res) => {
   res.status(201).json(users);
 });
 
-
-// @GET  - get user notifications
 const getNotificationsList = asyncHandler(async (req, res) => {
   const { userId } = req.user;
 
@@ -170,7 +125,6 @@ const getNotificationsList = asyncHandler(async (req, res) => {
   res.status(201).json(notice);
 });
 
-// @GET  - get user notifications
 const markNotificationRead = asyncHandler(async (req, res) => {
   try {
     const { userId } = req.user;
@@ -195,7 +149,6 @@ const markNotificationRead = asyncHandler(async (req, res) => {
   }
 });
 
-// PUT - Update user profile
 const updateUserProfile = asyncHandler(async (req, res) => {
   const { userId, isAdmin } = req.user;
   const { _id } = req.body;
@@ -230,7 +183,6 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   }
 });
 
-// PUT - active/disactivate user profile
 const activateUserProfile = asyncHandler(async (req, res) => {
   const { id } = req.params;
 
@@ -257,7 +209,6 @@ const activateUserProfile = asyncHandler(async (req, res) => {
 const changeUserPassword = asyncHandler(async (req, res) => {
   const { userId } = req.user;
 
-  // Remove this condition
   if (userId === "65ff94c7bb2de638d0c73f63") {
     return res.status(404).json({
       status: false,
@@ -283,7 +234,6 @@ const changeUserPassword = asyncHandler(async (req, res) => {
   }
 });
 
-// DELETE - delete user account
 const deleteUserProfile = asyncHandler(async (req, res) => {
   const { id } = req.params;
 

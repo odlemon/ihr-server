@@ -5,18 +5,15 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
   try {
     const { userId } = req.body;
 
-    // Find all tasks assigned to the specified user that are not trashed
     const tasks = await Task.find({
       team: userId, 
       isTrashed: false,
     }).populate('team', 'name');
 
-    // Check if no tasks are assigned to the user
     if (tasks.length === 0) {
       return res.status(200).json({ status: false, message: "User has no tasks assigned." });
     }
 
-    // Initialize status counts object with all categories
     const statusCounts = {
       completed: 0,
       'in progress': 0,
@@ -25,22 +22,18 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
       delayed: 0
     };
 
-    // Count tasks for each status category
     tasks.forEach(task => {
       if (statusCounts.hasOwnProperty(task.stage)) {
         statusCounts[task.stage]++;
       }
     });
 
-    // Fetch user details
     const userPerformance = tasks.length > 0 ? tasks[0].team[0] : null;
     if (!userPerformance) {
       return res.status(404).json({ status: false, message: "User not found." });
     }
 
     const totalTasks = tasks.length;
-
-    // Calculate overall rating based on all status categories
     let totalWeightedScore = 0;
     Object.keys(statusCounts).forEach(status => {
       const weight = getStatusWeight(status);
@@ -48,8 +41,6 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
     });
 
     const overallRating = totalWeightedScore / totalTasks;
-
-    // Construct response object
     const performanceRating = {
       user: userPerformance.name,
       overallRating: overallRating.toFixed(2),
@@ -57,7 +48,6 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
       totalTasks,
     };
 
-    // Send successful response
     res.status(200).json({ status: true, performance: performanceRating });
   } catch (error) {
     console.error("Error in evaluatePerformance:", error);

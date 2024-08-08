@@ -2,14 +2,30 @@ import asyncHandler from "express-async-handler";
 import Notice from "../models/notis.js";
 import Task from "../models/taskModel.js";
 import User from "../models/userModel.js";
-//import moment from 'moment';
+import KPI from "../models/kpiModel.js"; 
 
 const createTask = asyncHandler(async (req, res) => {
   try {
     const { userId } = req.user;
-    const { title, team, stage, date, priority, assets, monetaryValue } = req.body;
+    const { 
+      title, team, stage, date, priority, assets, 
+      monetaryValue, percentValue, kpi,
+      monetaryValueAchieved, percentValueAchieved, branch
+    } = req.body;
 
-    // Alert users of the task
+    let kpiData;
+    if (kpi && kpi.id) {
+      const kpiRecord = await KPI.findById(kpi.id);
+      if (!kpiRecord) {
+        return res.status(400).json({ status: false, message: "Invalid KPI selected." });
+      }
+      kpiData = {
+        id: kpi.id,
+        name: kpi.name || kpiRecord.name,
+        type: kpi.type || kpiRecord.type
+      };
+    }
+
     let text = "New task has been assigned to you";
     if (team?.length > 1) {
       text = text + ` and ${team?.length - 1} others.`;
@@ -17,25 +33,29 @@ const createTask = asyncHandler(async (req, res) => {
 
     text =
       text +
-      ` The task priority is set as ${priority} priority, so check and act accordingly. The task date is ${new Date(
-        date
-      ).toDateString()}. Thank you!!!`;
+      ` The task priority is set as ${priority} priority, so check and act accordingly. The task date is ${new Date(date).toDateString()}. Thank you!!!`;
 
     const activity = {
       type: "todo",
       activity: text,
+      date: new Date(),
       by: userId,
     };
 
     const task = await Task.create({
       title,
       team,
-      stage: stage.toLowerCase(),
       date,
+      branch,
       priority: priority.toLowerCase(),
+      stage: stage.toLowerCase(),
       assets,
-      activities: [activity], // Note: Wrap activity in array if not already
+      activities: [activity],
       monetaryValue,
+      percentValue,
+      monetaryValueAchieved: monetaryValueAchieved || 0,
+      percentValueAchieved: percentValueAchieved || 0,
+      kpi: kpiData ? kpiData : null,
     });
 
     await Notice.create({
@@ -44,42 +64,61 @@ const createTask = asyncHandler(async (req, res) => {
       task: task._id,
     });
 
-    res
-      .status(200)
-      .json({ status: true, task, message: "Task created successfully." });
+    res.status(200).json({ status: true, task, message: "Task created successfully." });
   } catch (error) {
     console.log(error);
     return res.status(400).json({ status: false, message: error.message });
   }
 });
 
+const updateTask = asyncHandler(async (req, res) => {
+  const { id } = req.params;
+  const { 
+    title, date, team, stage, priority, assets, 
+    monetaryValue, percentValue, kpi, 
+    monetaryValueAchieved, percentValueAchieved
+  } = req.body;
 
-/*const checkForOverdueTasks = asyncHandler(async (req, res) => {
   try {
-    const now = new Date();
-    const overdueTasks = await Task.find({
-      isTrashed: false,
-      date: { $lt: now },
-      stage: { $ne: 'completed' },
-    });
+    const task = await Task.findById(id);
 
-    for (const task of overdueTasks) {
-      const text = `Task "${task.title}" is overdue. Please check and act accordingly. The task date was ${moment(task.date).format('LL')}. Thank you!`;
-
-      await Notice.create({
-        team: task.team,
-        text,
-        task: task._id,
-      });
+    if (!task) {
+      return res.status(404).json({ status: false, message: "Task not found." });
     }
 
-    res.status(200).json({ status: true, message: 'Overdue tasks checked successfully.' });
-  } catch (error) {
-    console.error('Error checking for overdue tasks:', error);
-    res.status(500).json({ status: false, message: 'Error checking for overdue tasks.' });
-  }
-});*/
+    let kpiData;
+    if (kpi && kpi.id) {
+      const kpiRecord = await KPI.findById(kpi.id);
+      if (!kpiRecord) {
+        return res.status(400).json({ status: false, message: "Invalid KPI selected." });
+      }
+      kpiData = {
+        id: kpi.id,
+        name: kpi.name || kpiRecord.name,
+        type: kpi.type || kpiRecord.type
+      };
+    }
 
+    task.title = title || task.title;
+    task.date = date || task.date;
+    task.priority = priority ? priority.toLowerCase() : task.priority;
+    task.assets = assets || task.assets;
+    task.stage = stage ? stage.toLowerCase() : task.stage;
+    task.team = team || task.team;
+    task.monetaryValue = monetaryValue || task.monetaryValue;
+    task.percentValue = percentValue || task.percentValue;
+    task.monetaryValueAchieved = monetaryValueAchieved || task.monetaryValueAchieved;
+    task.percentValueAchieved = percentValueAchieved || task.percentValueAchieved;
+    task.kpi = kpiData ? kpiData : task.kpi;
+
+    await task.save();
+
+    res.status(200).json({ status: true, message: "Task updated successfully.", task });
+  } catch (error) {
+    console.error(error);
+    return res.status(400).json({ status: false, message: error.message });
+  }
+});
 
 const duplicateTask = asyncHandler(async (req, res) => {
   try {
@@ -88,7 +127,10 @@ const duplicateTask = asyncHandler(async (req, res) => {
 
     const task = await Task.findById(id);
 
-    // Alert users of the task
+    if (!task) {
+      return res.status(404).json({ status: false, message: "Task not found." });
+    }
+
     let text = "New task has been assigned to you";
     if (task.team?.length > 1) {
       text = text + ` and ${task.team?.length - 1} others.`;
@@ -111,7 +153,10 @@ const duplicateTask = asyncHandler(async (req, res) => {
     const newTask = await Task.create({
       ...task.toObject(),
       title: "Duplicate - " + task.title,
-      activities: [activity], // Wrap activity in array
+      activities: [activity],
+      monetaryValueAchieved: 0,
+      percentValueAchieved: 0,
+      kpi: task.kpi
     });
 
     await Notice.create({
@@ -128,46 +173,39 @@ const duplicateTask = asyncHandler(async (req, res) => {
   }
 });
 
-const updateTask = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const { title, date, team, stage, priority, assets, monetaryValue } = req.body;
-
-  try {
-    const task = await Task.findById(id);
-
-    task.title = title;
-    task.date = date;
-    task.priority = priority.toLowerCase();
-    task.assets = assets;
-    task.stage = stage.toLowerCase();
-    task.team = team;
-    task.monetaryValue = monetaryValue;
-  
-
-    await task.save();
-
-    res
-      .status(200)
-      .json({ status: true, message: "Task updated successfully." });
-  } catch (error) {
-    return res.status(400).json({ status: false, message: error.message });
-  }
-});
 
 const updateTaskStage = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
-    const { stage } = req.body;
+    const { stage, monetaryValueAchieved, percentValueAchieved } = req.body;
 
     const task = await Task.findById(id);
 
+    if (!task) {
+      return res.status(404).json({ status: false, message: "Task not found." });
+    }
+
     task.stage = stage.toLowerCase();
+
+    if (monetaryValueAchieved) {
+      task.monetaryValueAchieved = (task.monetaryValueAchieved || 0) + monetaryValueAchieved;
+    }
+
+    if (percentValueAchieved) {
+      task.percentValueAchieved = (task.percentValueAchieved || 0) + percentValueAchieved;
+    }
 
     await task.save();
 
-    res
-      .status(200)
-      .json({ status: true, message: "Task stage changed successfully." });
+    res.status(200).json({ 
+      status: true, 
+      message: "Task stage and achievements updated successfully.",
+      task: {
+        stage: task.stage,
+        monetaryValueAchieved: task.monetaryValueAchieved,
+        percentValueAchieved: task.percentValueAchieved
+      }
+    });
   } catch (error) {
     return res.status(400).json({ status: false, message: error.message });
   }
@@ -237,6 +275,23 @@ const getTasks = asyncHandler(async (req, res) => {
   });
 });
 
+const getAllTasks = asyncHandler(async (req, res) => {
+  let queryResult = Task.find({})
+    .populate({
+      path: "team",
+      select: "name title email",
+    })
+    .sort({ _id: -1 });
+
+  const tasks = await queryResult;
+
+  res.status(200).json({
+    status: true,
+    tasks,
+  });
+});
+
+
 const getTask = asyncHandler(async (req, res) => {
   try {
     const { id } = req.params;
@@ -261,14 +316,17 @@ const getTask = asyncHandler(async (req, res) => {
     throw new Error("Failed to fetch task", error);
   }
 });
-
 const postTaskActivity = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { userId } = req.user;
-  const { type, activity } = req.body;
+  const { type, activity, monetaryValueAchieved, percentValueAchieved } = req.body;
 
   try {
     const task = await Task.findById(id);
+
+    if (!task) {
+      return res.status(404).json({ status: false, message: "Task not found" });
+    }
 
     const data = {
       type,
@@ -277,7 +335,6 @@ const postTaskActivity = asyncHandler(async (req, res) => {
     };
     task.activities.push(data);
 
-    // Update task stage based on type
     if (type === "completed") {
       task.stage = "completed";
     } else if (type === "in progress") {
@@ -286,11 +343,15 @@ const postTaskActivity = asyncHandler(async (req, res) => {
       task.stage = "todo";
     }
 
+    if (task.kpi?.type === "Monetary" && monetaryValueAchieved) {
+      task.monetaryValueAchieved = (task.monetaryValueAchieved || 0) + monetaryValueAchieved;
+    } else if (task.kpi?.type === "Percentage" && percentValueAchieved) {
+      task.percentValueAchieved = (task.percentValueAchieved || 0) + percentValueAchieved;
+    }
+
     await task.save();
 
-    res
-      .status(200)
-      .json({ status: true, message: "Activity posted successfully." });
+    res.status(200).json({ status: true, message: "Activity posted successfully." });
   } catch (error) {
     return res.status(400).json({ status: false, message: error.message });
   }
@@ -353,9 +414,7 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
 
     // Fetch all tasks from the database
     const allTasks = isAdmin
-      ? await Task.find({
-          isTrashed: false,
-        })
+      ? await Task.find({ isTrashed: false })
           .populate({
             path: "team",
             select: "name role title email department",
@@ -384,35 +443,27 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
       .sort({ _id: -1 });
 
     // Group tasks by stage and calculate counts
-    const groupedTasks = tasksWithDepartments?.reduce((result, task) => {
+    const groupedTasks = tasksWithDepartments.reduce((result, task) => {
       const stage = task.stage;
-
-      if (!result[stage]) {
-        result[stage] = 1;
-      } else {
-        result[stage] += 1;
-      }
-
+      result[stage] = (result[stage] || 0) + 1;
       return result;
     }, {});
 
     const graphData = Object.entries(
-      tasksWithDepartments?.reduce((result, task) => {
+      tasksWithDepartments.reduce((result, task) => {
         const { priority } = task;
         result[priority] = (result[priority] || 0) + 1;
         return result;
       }, {})
     ).map(([name, total]) => ({ name, total }));
 
-    // Calculate total tasks
     const totalTasks = tasksWithDepartments.length;
-    const last10Task = tasksWithDepartments?.slice(0, 10);
+    const last10Task = tasksWithDepartments.slice(0, 10);
 
-    // Calculate department performance
-    const departmentPerformance = tasksWithDepartments?.reduce((result, task) => {
+    const departmentPerformance = tasksWithDepartments.reduce((result, task) => {
       task.team.forEach((member) => {
         const department = member.department;
-        if (!department) return; // Skip if department is not defined
+        if (!department) return;
 
         if (!result[department]) {
           result[department] = { completed: 0, overdue: 0, inProgress: 0 };
@@ -430,19 +481,110 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
       return result;
     }, {});
 
-    // Calculate total monetary values for all objectives and completed tasks
-    const totalMonetaryValue = tasksWithDepartments.reduce((total, task) => total + (task.monetaryValue || 0), 0);
-    const completedMonetaryValue = tasksWithDepartments.reduce((total, task) => {
-      const statusLower = task.status?.toLowerCase();
-      if (statusLower === 'complete' || task.stage === 'completed') {
-        return total + (task.monetaryValue || 0);
-      }
-      return total;
-    }, 0);
+    const kpiSummary = {};
+    const branchSummary = {};
 
-    // Calculate the overall revenue target and revenue achieved
-    const revenueTarget = totalMonetaryValue - completedMonetaryValue;
-    const revenueAchieved = completedMonetaryValue;
+    tasksWithDepartments.forEach((task) => {
+      const kpiName = task.kpi?.name || 'Uncategorized';
+      const branch = task.branch || 'Unspecified';
+      const statusLower = task.status?.toLowerCase();
+      const isCompleted = statusLower === 'complete' || task.stage === 'completed';
+      const monetaryValue = task.monetaryValue || 0;
+      const percentValue = task.percentValue || 0;
+      const type = task.kpi?.type || 'Monetary';
+
+      // KPI Summary
+      if (!kpiSummary[kpiName]) {
+        kpiSummary[kpiName] = {
+          totalMonetaryValue: 0,
+          completedMonetaryValue: 0,
+          revenueTarget: 0,
+          revenueAchieved: 0,
+          totalPercentageValue: 0,
+          completedPercentageValue: 0,
+          percentageRevenueTarget: 0,
+          percentageRevenueAchieved: 0,
+          branch: branch,
+          type: type
+        };
+      }
+      if (type === 'Monetary') {
+        kpiSummary[kpiName].totalMonetaryValue += monetaryValue;
+        if (isCompleted) {
+          kpiSummary[kpiName].completedMonetaryValue += monetaryValue;
+        }
+      } else if (type === 'Percentage') {
+        kpiSummary[kpiName].totalPercentageValue += percentValue;
+        if (isCompleted) {
+          kpiSummary[kpiName].completedPercentageValue += percentValue;
+        }
+      }
+
+      // Branch Summary
+      if (!branchSummary[branch]) {
+        branchSummary[branch] = {
+          totalMonetaryValue: 0,
+          completedMonetaryValue: 0,
+          revenueTarget: 0,
+          revenueAchieved: 0,
+          totalPercentageValue: 0,
+          completedPercentageValue: 0,
+          percentageRevenueTarget: 0,
+          percentageRevenueAchieved: 0,
+        };
+      }
+      if (type === 'Monetary') {
+        branchSummary[branch].totalMonetaryValue += monetaryValue;
+        if (isCompleted) {
+          branchSummary[branch].completedMonetaryValue += monetaryValue;
+        }
+      } else if (type === 'Percentage') {
+        branchSummary[branch].totalPercentageValue += percentValue;
+        if (isCompleted) {
+          branchSummary[branch].completedPercentageValue += percentValue;
+        }
+      }
+    });
+
+    // Calculate revenue target and achieved for each KPI and branch
+    const calculateRevenue = (summary) => {
+      Object.keys(summary).forEach(key => {
+        const data = summary[key];
+        if (data.type === 'Monetary') {
+          data.revenueTarget = data.totalMonetaryValue - data.completedMonetaryValue;
+          data.revenueAchieved = data.completedMonetaryValue;
+        } else if (data.type === 'Percentage') {
+          data.percentageRevenueTarget = data.totalPercentageValue - data.completedPercentageValue;
+          data.percentageRevenueAchieved = data.completedPercentageValue;
+        }
+      });
+    };
+
+    calculateRevenue(kpiSummary);
+    calculateRevenue(branchSummary);
+
+    // Calculate overall totals for monetary and percentage values
+    const overallMonetaryTotals = Object.values(kpiSummary).reduce((totals, kpi) => {
+      if (kpi.type === 'Monetary') {
+        totals.totalMonetaryValue += kpi.totalMonetaryValue;
+        totals.completedMonetaryValue += kpi.completedMonetaryValue;
+      }
+      return totals;
+    }, { totalMonetaryValue: 0, completedMonetaryValue: 0 });
+
+    overallMonetaryTotals.revenueTarget = overallMonetaryTotals.totalMonetaryValue - overallMonetaryTotals.completedMonetaryValue;
+    overallMonetaryTotals.revenueAchieved = overallMonetaryTotals.completedMonetaryValue;
+
+    const overallPercentageTotals = Object.values(kpiSummary).reduce((totals, kpi) => {
+      if (kpi.type === 'Percentage') {
+        totals.totalPercentageValue += kpi.totalPercentageValue;
+        totals.completedPercentageValue += kpi.completedPercentageValue;
+      }
+      return totals;
+    }, { totalPercentageValue: 0, completedPercentageValue: 0 });
+
+    overallPercentageTotals.percentageRevenueTarget = overallPercentageTotals.totalPercentageValue - overallPercentageTotals.completedPercentageValue;
+    overallPercentageTotals.percentageRevenueAchieved = overallPercentageTotals.completedPercentageValue;
 
     // Combine results into a summary object
     const summary = {
@@ -452,10 +594,10 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
       tasks: groupedTasks,
       graphData,
       departmentPerformance,
-      totalMonetaryValue,
-      completedMonetaryValue,
-      revenueTarget,
-      revenueAchieved,
+      kpiSummary,
+      branchSummary,
+      overallMonetaryTotals,
+      overallPercentageTotals
     };
 
     res.status(200).json({ status: true, ...summary, message: "Successfully." });
@@ -464,7 +606,6 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     return res.status(400).json({ status: false, message: error.message });
   }
 });
-
 
 
 
@@ -481,4 +622,5 @@ export {
   trashTask,
   updateTask,
   updateTaskStage,
+  getAllTasks,
 };

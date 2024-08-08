@@ -1,15 +1,19 @@
 import mongoose, { Schema } from "mongoose";
 import Branch from "./branchModel.js";
 
-const departmentSchema = new Schema(
+const kpiSchema = new Schema(
   {
     name: { type: String, required: true, unique: true },
-    description: { type: String },
+    type: {
+      type: String,
+      required: true,
+      enum: ['Monetary', 'Percentage'],
+    },
     branch: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
   },
   { timestamps: true }
 );
 
-const Department = mongoose.model("Department", departmentSchema);
+const KPI = mongoose.model("KPI", kpiSchema);
 
-export default Department;
+export default KPI;

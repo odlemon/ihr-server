@@ -3,6 +3,7 @@ import mongoose, { Schema } from "mongoose";
 const taskSchema = new Schema(
   {
     title: { type: String, required: true },
+    branch: { type: String, required: true },
     date: { type: Date, default: new Date() },
     priority: {
       type: String,
@@ -48,10 +49,17 @@ const taskSchema = new Schema(
     team: [{ type: Schema.Types.ObjectId, ref: "User" }],
     isTrashed: { type: Boolean, default: false },
     monetaryValue: { type: Number, default: 0 },
+    monetaryValueAchieved: { type: Number, default: 0 },
+    percentValue: { type: Number, default: 0 },
+    percentValueAchieved: { type: Number, default: 0 }, 
+    kpi: {
+      id: { type: Schema.Types.ObjectId, ref: "KPI" },
+      name: { type: String },
+      type: { type: String, enum: ["Monetary", "Percentage"] },
+    },
   },
   { timestamps: true }
 );
 
 const Task = mongoose.model("Task", taskSchema);
-
 export default Task;

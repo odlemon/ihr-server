@@ -460,22 +460,28 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     const totalTasks = tasksWithDepartments.length;
     const last10Task = tasksWithDepartments.slice(0, 10);
 
+    // Calculate department performance including KPI name
     const departmentPerformance = tasksWithDepartments.reduce((result, task) => {
       task.team.forEach((member) => {
         const department = member.department;
         if (!department) return;
 
+        const kpiName = task.kpi?.name || 'Uncategorized';
+
         if (!result[department]) {
-          result[department] = { completed: 0, overdue: 0, inProgress: 0 };
+          result[department] = {};
+        }
+        if (!result[department][kpiName]) {
+          result[department][kpiName] = { completed: 0, overdue: 0, inProgress: 0 };
         }
 
         const statusLower = task.status?.toLowerCase();
         if (statusLower === 'complete' || task.stage === 'completed') {
-          result[department].completed += 1;
+          result[department][kpiName].completed += 1;
         } else if (statusLower === 'in progress' || task.stage === 'in progress') {
-          result[department].inProgress += 1;
+          result[department][kpiName].inProgress += 1;
         } else if (new Date(task.date) < new Date()) {
-          result[department].overdue += 1;
+          result[department][kpiName].overdue += 1;
         }
       });
       return result;
@@ -487,10 +493,8 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     tasksWithDepartments.forEach((task) => {
       const kpiName = task.kpi?.name || 'Uncategorized';
       const branch = task.branch || 'Unspecified';
-      const statusLower = task.status?.toLowerCase();
-      const isCompleted = statusLower === 'complete' || task.stage === 'completed';
-      const monetaryValue = task.monetaryValue || 0;
-      const percentValue = task.percentValue || 0;
+      const monetaryValueAchieved = task.monetaryValueAchieved || 0;
+      const percentValueAchieved = task.percentValueAchieved || 0;
       const type = task.kpi?.type || 'Monetary';
 
       // KPI Summary
@@ -509,15 +513,11 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
         };
       }
       if (type === 'Monetary') {
-        kpiSummary[kpiName].totalMonetaryValue += monetaryValue;
-        if (isCompleted) {
-          kpiSummary[kpiName].completedMonetaryValue += monetaryValue;
-        }
+        kpiSummary[kpiName].totalMonetaryValue += task.monetaryValue || 0;
+        kpiSummary[kpiName].completedMonetaryValue += monetaryValueAchieved;
       } else if (type === 'Percentage') {
-        kpiSummary[kpiName].totalPercentageValue += percentValue;
-        if (isCompleted) {
-          kpiSummary[kpiName].completedPercentageValue += percentValue;
-        }
+        kpiSummary[kpiName].totalPercentageValue += task.percentValue || 0;
+        kpiSummary[kpiName].completedPercentageValue += percentValueAchieved;
       }
 
       // Branch Summary
@@ -534,15 +534,11 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
         };
       }
       if (type === 'Monetary') {
-        branchSummary[branch].totalMonetaryValue += monetaryValue;
-        if (isCompleted) {
-          branchSummary[branch].completedMonetaryValue += monetaryValue;
-        }
+        branchSummary[branch].totalMonetaryValue += task.monetaryValue || 0;
+        branchSummary[branch].completedMonetaryValue += monetaryValueAchieved;
       } else if (type === 'Percentage') {
-        branchSummary[branch].totalPercentageValue += percentValue;
-        if (isCompleted) {
-          branchSummary[branch].completedPercentageValue += percentValue;
-        }
+        branchSummary[branch].totalPercentageValue += task.percentValue || 0;
+        branchSummary[branch].completedPercentageValue += percentValueAchieved;
       }
     });
 
@@ -606,6 +602,7 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     return res.status(400).json({ status: false, message: error.message });
   }
 });
+
 
 
 

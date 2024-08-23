@@ -46,6 +46,12 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
       overallRating: overallRating.toFixed(2),
       statusCounts,
       totalTasks,
+      tasks: tasks.map(task => ({
+        _id: task._id,
+        name: task.name,
+        created_at: task.created_at,
+        stage: task.stage,
+      })),
     };
 
     res.status(200).json({ status: true, performance: performanceRating });

@@ -542,7 +542,6 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
       }
     });
 
-    // Calculate revenue target and achieved for each KPI and branch
     const calculateRevenue = (summary) => {
       Object.keys(summary).forEach(key => {
         const data = summary[key];
@@ -602,10 +601,6 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     return res.status(400).json({ status: false, message: error.message });
   }
 });
-
-
-
-
 
 export {
   createSubTask,

@@ -51,12 +51,13 @@ const taskSchema = new Schema(
     monetaryValue: { type: Number, default: 0 },
     monetaryValueAchieved: { type: Number, default: 0 },
     percentValue: { type: Number, default: 0 },
-    percentValueAchieved: { type: Number, default: 0 }, 
+    percentValueAchieved: { type: Number, default: 0 },
     kpi: {
       id: { type: Schema.Types.ObjectId, ref: "KPI" },
       name: { type: String },
       type: { type: String, enum: ["Monetary", "Percentage"] },
     },
+    created_at: { type: Date, default: Date.now }
   },
   { timestamps: true }
 );

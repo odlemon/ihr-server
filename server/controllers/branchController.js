@@ -56,8 +56,6 @@ const getBranchById = asyncHandler(async (req, res) => {
   }
 });
 
-
-// PUT - Update a department
 const updateBranch = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, description } = req.body;
@@ -80,7 +78,6 @@ const updateBranch = asyncHandler(async (req, res) => {
   }
 });
 
-// DELETE - Delete a department
 const deleteBranch = asyncHandler(async (req, res) => {
   const { id } = req.params;
 

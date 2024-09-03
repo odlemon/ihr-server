@@ -430,7 +430,6 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
           })
           .sort({ _id: -1 });
 
-    // Add department field to each task
     const tasksWithDepartments = allTasks.map((task) => {
       const departments = task.team.map((member) => member.department).filter(Boolean);
       const uniqueDepartments = [...new Set(departments)];
@@ -442,7 +441,6 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
       .limit(10)
       .sort({ _id: -1 });
 
-    // Group tasks by stage and calculate counts
     const groupedTasks = tasksWithDepartments.reduce((result, task) => {
       const stage = task.stage;
       result[stage] = (result[stage] || 0) + 1;
@@ -460,7 +458,6 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     const totalTasks = tasksWithDepartments.length;
     const last10Task = tasksWithDepartments.slice(0, 10);
 
-    // Calculate department performance including KPI name
     const departmentPerformance = tasksWithDepartments.reduce((result, task) => {
       task.team.forEach((member) => {
         const department = member.department;
@@ -497,7 +494,6 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
       const percentValueAchieved = task.percentValueAchieved || 0;
       const type = task.kpi?.type || 'Monetary';
 
-      // KPI Summary
       if (!kpiSummary[kpiName]) {
         kpiSummary[kpiName] = {
           totalMonetaryValue: 0,
@@ -520,7 +516,6 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
         kpiSummary[kpiName].completedPercentageValue += percentValueAchieved;
       }
 
-      // Branch Summary
       if (!branchSummary[branch]) {
         branchSummary[branch] = {
           totalMonetaryValue: 0,
@@ -558,7 +553,6 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     calculateRevenue(kpiSummary);
     calculateRevenue(branchSummary);
 
-    // Calculate overall totals for monetary and percentage values
     const overallMonetaryTotals = Object.values(kpiSummary).reduce((totals, kpi) => {
       if (kpi.type === 'Monetary') {
         totals.totalMonetaryValue += kpi.totalMonetaryValue;
@@ -581,7 +575,6 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     overallPercentageTotals.percentageRevenueTarget = overallPercentageTotals.totalPercentageValue - overallPercentageTotals.completedPercentageValue;
     overallPercentageTotals.percentageRevenueAchieved = overallPercentageTotals.completedPercentageValue;
 
-    // Combine results into a summary object
     const summary = {
       totalTasks,
       last10Task,

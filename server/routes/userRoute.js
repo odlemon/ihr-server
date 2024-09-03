@@ -12,6 +12,7 @@ import {
   updateUserProfile,
 } from "../controllers/userController.js";
 import { isAdminRoute, protectRoute } from "../middleware/authMiddleware.js";
+import { checkPermission } from "../middleware/checkPermission.js";
 
 const router = express.Router();
 
@@ -19,7 +20,7 @@ router.post("/register", registerUser);
 router.post("/login", loginUser);
 router.post("/logout", logoutUser);
 
-router.get("/get-team", protectRoute, isAdminRoute, getTeamList);
+router.get("/get-team", protectRoute, checkPermission("can view team list"), getTeamList);
 router.get("/notifications", protectRoute, getNotificationsList);
 
 router.put("/profile", protectRoute, updateUserProfile);

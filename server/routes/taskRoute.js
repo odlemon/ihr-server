@@ -14,30 +14,27 @@ import {
   getAllTasks,
 } from "../controllers/taskController.js";
 import { evaluatePerformance } from "../controllers/performanceController.js";
-import { isAdminRoute, protectRoute } from "../middleware/authMiddleware.js";
+import { protectRoute } from "../middleware/authMiddleware.js";
+import { checkPermission } from "../middleware/checkPermission.js";
 
 const router = express.Router();
 
-router.post("/create", protectRoute, isAdminRoute, createTask);
-router.post("/duplicate/:id", protectRoute, isAdminRoute, duplicateTask);
-router.post("/activity/:id", protectRoute, postTaskActivity);
-router.get("/all", protectRoute, isAdminRoute, getAllTasks);
+router.post("/create", protectRoute, checkPermission("can create tasks"), createTask);
+router.post("/duplicate/:id", protectRoute, checkPermission("can duplicate task"), duplicateTask);
+router.post("/activity/:id", protectRoute, checkPermission("can add task activity"), postTaskActivity);
+router.get("/all", protectRoute, checkPermission("can view all tasks"), getAllTasks);
 
-router.get("/dashboard", protectRoute, dashboardStatistics);
-router.get("/", protectRoute, getTasks);
-router.get("/:id", protectRoute, getTask);
-router.post("/performance/evaluation", protectRoute, isAdminRoute, evaluatePerformance);
+router.get("/dashboard", protectRoute, checkPermission("can view dashboard"), dashboardStatistics);
 
-router.put("/create-subtask/:id", protectRoute, isAdminRoute, createSubTask);
-router.put("/update/:id", protectRoute, isAdminRoute, updateTask);
-router.put("/change-stage/:id", protectRoute, updateTaskStage);
-router.put("/:id", protectRoute, isAdminRoute, trashTask);
+router.get("/", protectRoute, checkPermission("can view tasks"), getTasks);
+router.get("/:id", protectRoute, checkPermission("can view task details"), getTask);
+router.post("/performance/evaluation", protectRoute, checkPermission("can evaluate performance"), evaluatePerformance);
 
-router.delete(
-  "/delete-restore/:id?",
-  protectRoute,
-  isAdminRoute,
-  deleteRestoreTask
-);
+router.put("/create-subtask/:id", protectRoute, checkPermission("can create subtask"), createSubTask);
+router.put("/update/:id", protectRoute, checkPermission("can update task"), updateTask);
+router.put("/change-stage/:id", protectRoute, checkPermission("can change task stage"), updateTaskStage);
+router.put("/:id", protectRoute, checkPermission("can trash task"), trashTask);
+
+router.delete("/delete-restore/:id?", protectRoute, checkPermission("can delete task"), deleteRestoreTask);
 
 export default router;

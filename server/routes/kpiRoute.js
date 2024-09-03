@@ -7,15 +7,16 @@ import {
   updateKPI,
   getAllKPIs,
 } from "../controllers/kpiController.js";
-import { isAdminRoute, protectRoute } from "../middleware/authMiddleware.js";
+import { protectRoute } from "../middleware/authMiddleware.js";
+import { checkPermission } from "../middleware/checkPermission.js";
 
 const router = express.Router();
 
-router.post("/create", protectRoute, isAdminRoute, createKPI);
-router.post("/get", protectRoute, isAdminRoute, getKPIs);
-router.get("/all", protectRoute, isAdminRoute, getAllKPIs);
-router.get("/detail/:id", protectRoute, isAdminRoute, getKPIById);
-router.put("/update/:id", protectRoute, isAdminRoute, updateKPI);
-router.delete("/delete/:id", protectRoute, isAdminRoute, deleteKPI);
+router.post("/create", protectRoute, checkPermission("can create KPIs"), createKPI);
+router.post("/get", protectRoute, checkPermission("can view KPIs"), getKPIs);
+router.get("/all", protectRoute, checkPermission("can view all KPIs"), getAllKPIs);
+router.get("/detail/:id", protectRoute, checkPermission("can view KPI details"), getKPIById);
+router.put("/update/:id", protectRoute, checkPermission("can update KPIs"), updateKPI);
+router.delete("/delete/:id", protectRoute, checkPermission("can delete KPIs"), deleteKPI);
 
 export default router;

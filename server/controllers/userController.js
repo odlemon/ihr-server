@@ -3,6 +3,7 @@ import User from "../models/userModel.js";
 import createJWT from "../utils/index.js";
 import Notice from "../models/notis.js";
 import crypto from 'crypto';
+import mongoose from "mongoose";
 
 function generateRandomPassword(length = 10) {
   return crypto.randomBytes(Math.ceil(length / 2))
@@ -31,11 +32,16 @@ const loginUser = asyncHandler(async (req, res) => {
   const isMatch = await user.matchPassword(password);
 
   if (user && isMatch) {
-    createJWT(res, user._id);
+    const token = createJWT(res, user._id);
 
     user.password = undefined;
 
-    res.status(200).json(user);
+     const responseUser = {
+      ...user.toObject(),
+      token 
+    };
+
+    res.status(200).json(responseUser);
   } else {
     return res
       .status(401)
@@ -44,44 +50,63 @@ const loginUser = asyncHandler(async (req, res) => {
 });
 
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, isAdmin, role, title, department } = req.body;
+  const { name, email, isAdmin, role, title, department, password } = req.body;
 
-  const userExists = await User.findOne({ email });
+  try {
+    // Validate role ID format
+    if (!mongoose.Types.ObjectId.isValid(role)) {
+      return res.status(400).json({ status: false, message: "Invalid role ID format" });
+    }
 
-  if (userExists) {
-    return res
-      .status(400)
-      .json({ status: false, message: "Email address already exists" });
-  }
+    // Convert role to ObjectId
+    const roleId = new mongoose.Types.ObjectId(role);
 
-  const password = generateRandomPassword();
+    const userExists = await User.findOne({ email });
 
-  const user = await User.create({
-    name,
-    email,
-    password,
-    isAdmin,
-    role,
-    department,
-    title,
-  });
+    if (userExists) {
+      return res
+        .status(400)
+        .json({ status: false, message: "Email address already exists" });
+    }
 
-  if (user) {
-    isAdmin ? createJWT(res, user._id) : null;
+    //const password = generateRandomPassword();
 
-    user.password = password;
-
-    res.status(201).json({
-      ...user.toObject(),
+    const user = await User.create({
+      name,
+      email,
       password,
-      message: "User registered successfully. Login details are included in the response."
+      isAdmin,
+      role: roleId, // Use the converted ObjectId
+      department,
+      title,
     });
-  } else {
+
+    if (user) {
+      if (isAdmin) {
+        createJWT(res, user._id);
+      }
+
+      user.password = password;
+
+      res.status(201).json({
+        ...user.toObject(),
+        password,
+        message: "User registered successfully. Login details are included in the response."
+      });
+    } else {
+      return res
+        .status(400)
+        .json({ status: false, message: "Invalid user data" });
+    }
+  } catch (error) {
+    console.error("Error registering user:", error); // Add detailed error logging
     return res
-      .status(400)
-      .json({ status: false, message: "Invalid user data" });
+      .status(500)
+      .json({ status: false, message: "Server error", error: error.message }); // Include error message in response
   }
 });
+
+
 
 const logoutUser = (req, res) => {
   res.cookie("token", "", {

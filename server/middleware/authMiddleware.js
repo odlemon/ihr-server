@@ -3,6 +3,7 @@ import jwt from "jsonwebtoken";
 import User from "../models/userModel.js";
 
 const protectRoute = asyncHandler(async (req, res, next) => {
+  
   let token = req.cookies.token;
 
   if (token) {
@@ -17,6 +18,7 @@ const protectRoute = asyncHandler(async (req, res, next) => {
         email: resp.email,
         isAdmin: resp.isAdmin,
         userId: decodedToken.userId,
+        role: resp.role,  
       };
 
       next();
@@ -34,6 +36,7 @@ const protectRoute = asyncHandler(async (req, res, next) => {
 });
 
 const isAdminRoute = (req, res, next) => {
+  console.log("amidn checked")
   if (req.user && req.user.isAdmin) {
     next();
   } else {
@@ -43,5 +46,9 @@ const isAdminRoute = (req, res, next) => {
     });
   }
 };
+
+
+
+
 
 export { isAdminRoute, protectRoute };

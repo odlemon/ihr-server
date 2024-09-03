@@ -7,15 +7,16 @@ import {
   updateDepartment,
   getAllDepartments,
 } from "../controllers/departmentController.js";
-import { isAdminRoute, protectRoute } from "../middleware/authMiddleware.js";
+import { protectRoute } from "../middleware/authMiddleware.js";
+import { checkPermission } from "../middleware/checkPermission.js";
 
 const router = express.Router();
 
-router.post("/create", protectRoute, isAdminRoute, createDepartment);
-router.post("/get", protectRoute, isAdminRoute, getDepartments);
-router.get("/all", protectRoute, isAdminRoute, getAllDepartments);
-router.get("/detail/:id", protectRoute, isAdminRoute, getDepartmentById);
-router.put("/update/:id", protectRoute, isAdminRoute, updateDepartment);
-router.delete("/delete/:id", protectRoute, isAdminRoute, deleteDepartment);
+router.post("/create", protectRoute, checkPermission("can create departments"), createDepartment);
+router.post("/get", protectRoute, checkPermission("can view departments"), getDepartments);
+router.get("/all", protectRoute, checkPermission("can view all departments"), getAllDepartments);
+router.get("/detail/:id", protectRoute, checkPermission("can view department details"), getDepartmentById);
+router.put("/update/:id", protectRoute, checkPermission("can update departments"), updateDepartment);
+router.delete("/delete/:id", protectRoute, checkPermission("can delete departments"), deleteDepartment);
 
 export default router;

@@ -4,6 +4,7 @@ import createJWT from "../utils/index.js";
 import Notice from "../models/notis.js";
 import crypto from 'crypto';
 import mongoose from "mongoose";
+import Role from "../models/roleModel.js";
 
 function generateRandomPassword(length = 10) {
   return crypto.randomBytes(Math.ceil(length / 2))
@@ -17,12 +18,13 @@ const loginUser = asyncHandler(async (req, res) => {
   const user = await User.findOne({ email });
 
   if (!user) {
-    return res
-      .status(401)
-      .json({ status: false, message: "Invalid email or password." });
+    return res.status(401).json({
+      status: false,
+      message: "Invalid email or password.",
+    });
   }
 
-  if (!user?.isActive) {
+  if (!user.isActive) {
     return res.status(401).json({
       status: false,
       message: "User account has been deactivated, contact the administrator",
@@ -30,35 +32,44 @@ const loginUser = asyncHandler(async (req, res) => {
   }
 
   const isMatch = await user.matchPassword(password);
-
-  if (user && isMatch) {
-    const token = createJWT(res, user._id);
-
-    user.password = undefined;
-
-     const responseUser = {
-      ...user.toObject(),
-      token 
-    };
-
-    res.status(200).json(responseUser);
-  } else {
-    return res
-      .status(401)
-      .json({ status: false, message: "Invalid email or password" });
+  if (!isMatch) {
+    return res.status(401).json({
+      status: false,
+      message: "Invalid email or password.",
+    });
   }
+
+  const role = await Role.findById(user.role).select('permissions'); 
+
+  if (!role) {
+    return res.status(500).json({
+      status: false,
+      message: "User role not found, contact the administrator.",
+    });
+  }
+
+  const token = createJWT(res, user._id);
+  const responseUser = {
+    ...user.toObject(),
+    token,
+    permissions: role.permissions, 
+  };
+
+  delete responseUser.password;
+
+  res.status(200).json(responseUser);
 });
 
+
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, isAdmin, role, title, department, password } = req.body;
+  const { name, email, isAdmin, role, title, department } = req.body;
 
   try {
-    // Validate role ID format
+
     if (!mongoose.Types.ObjectId.isValid(role)) {
       return res.status(400).json({ status: false, message: "Invalid role ID format" });
     }
 
-    // Convert role to ObjectId
     const roleId = new mongoose.Types.ObjectId(role);
 
     const userExists = await User.findOne({ email });
@@ -69,7 +80,7 @@ const registerUser = asyncHandler(async (req, res) => {
         .json({ status: false, message: "Email address already exists" });
     }
 
-    //const password = generateRandomPassword();
+    const password = generateRandomPassword();
 
     const user = await User.create({
       name,
@@ -99,10 +110,10 @@ const registerUser = asyncHandler(async (req, res) => {
         .json({ status: false, message: "Invalid user data" });
     }
   } catch (error) {
-    console.error("Error registering user:", error); // Add detailed error logging
+    console.error("Error registering user:", error);
     return res
       .status(500)
-      .json({ status: false, message: "Server error", error: error.message }); // Include error message in response
+      .json({ status: false, message: "Server error", error: error.message });
   }
 });
 
@@ -175,38 +186,57 @@ const markNotificationRead = asyncHandler(async (req, res) => {
 });
 
 const updateUserProfile = asyncHandler(async (req, res) => {
-  const { userId, isAdmin } = req.user;
-  const { _id } = req.body;
+  try {
+    console.log("Request Body:", req.body);
+    const { userId, isAdmin } = req.user;
+    const { _id } = req.body;
 
-  const id =
-    isAdmin && userId === _id
-      ? userId
-      : isAdmin && userId !== _id
-      ? _id
-      : userId;
+    const id =
+      isAdmin && userId === _id
+        ? userId
+        : isAdmin && userId !== _id
+        ? _id
+        : userId;
 
-  const user = await User.findById(id);
+    const user = await User.findById(id);
 
-  if (user) {
-    user.name = req.body.name || user.name;
-    // user.email = req.body.email || user.email;
-    user.title = req.body.title || user.title;
-    user.role = req.body.role || user.role;
-    user.department = req.body.department || user.department;
+    if (user) {
+      user.name = req.body.name || user.name;
+      // user.email = req.body.email || user.email;
+      user.title = req.body.title || user.title;
+      user.role = req.body.role || user.role;
+      user.department = req.body.department || user.department;
+      user.profilePicture = req.body.profilePictureURL || user.profilePicture;
 
-    const updatedUser = await user.save();
+      const updatedUser = await user.save();
 
-    user.password = undefined;
+      user.password = undefined;
 
-    res.status(201).json({
-      status: true,
-      message: "Profile Updated Successfully.",
-      user: updatedUser,
+      res.status(201).json({
+        status: true,
+        message: "Profile Updated Successfully.",
+        user: updatedUser,
+      });
+    } else {
+      res.status(404).json({ status: false, message: "User not found baby" });
+    }
+  } catch (error) {
+    console.error("Error updating user profile:", {
+      message: error.message,
+      stack: error.stack,
+      requestBody: req.body,
+      userId: req.user.userId,
+      isAdmin: req.user.isAdmin,
     });
-  } else {
-    res.status(404).json({ status: false, message: "User not found" });
+
+    res.status(500).json({
+      status: false,
+      message: "An error occurred while updating the profile.",
+      error: error.message,
+    });
   }
 });
+
 
 const activateUserProfile = asyncHandler(async (req, res) => {
   const { id } = req.params;

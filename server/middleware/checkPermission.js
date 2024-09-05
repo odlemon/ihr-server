@@ -10,13 +10,12 @@ const checkPermission = (permissionName) => asyncHandler(async (req, res, next) 
             return res.status(404).json({ status: false, message: "User not found." });
         }
 
-        // Print the user object for debugging
-        console.log("User object:", user);
+        
+        //console.log("User object:", user);
 
-        // Print the role and permissions for detailed inspection
         const role = user.role;
-        console.log("Role object:", role);
-        console.log("Permissions array:", role.permissions);
+        //console.log("Role object:", role);
+        //console.log("Permissions array:", role.permissions);
         
         if (user.isAdmin) {
             return next();

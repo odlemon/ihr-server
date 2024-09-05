@@ -12,7 +12,6 @@ import { checkPermission } from "../middleware/checkPermission.js";
 
 const router = express.Router();
 
-// Define permissions based on the operations related to roles
 router.post("/create", protectRoute, checkPermission("can create roles"), createRole);
 router.post("/get", protectRoute, checkPermission("can view roles"), getRoles);
 router.get("/all", protectRoute, checkPermission("can view all roles"), getAllRoles);

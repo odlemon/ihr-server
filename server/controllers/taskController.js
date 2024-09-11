@@ -458,6 +458,11 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     const totalTasks = tasksWithDepartments.length;
     const last10Task = tasksWithDepartments.slice(0, 10);
 
+    const totalOverdueTasks = tasksWithDepartments.filter(task => {
+      const statusLower = task.status?.toLowerCase();
+      return (statusLower !== 'complete' && task.stage !== 'completed') && new Date(task.date) < new Date();
+    }).length;
+
     const departmentPerformance = tasksWithDepartments.reduce((result, task) => {
       task.team.forEach((member) => {
         const department = member.department;
@@ -577,6 +582,7 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
 
     const summary = {
       totalTasks,
+      totalOverdueTasks,
       last10Task,
       users: isAdmin ? users : [],
       tasks: groupedTasks,

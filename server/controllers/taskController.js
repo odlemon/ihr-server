@@ -412,7 +412,6 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
   try {
     const { userId, isAdmin } = req.user;
 
-    // Fetch all tasks from the database
     const allTasks = isAdmin
       ? await Task.find({ isTrashed: false })
           .populate({

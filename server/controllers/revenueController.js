@@ -1,6 +1,7 @@
 import asyncHandler from "express-async-handler";
 import Revenue from "../models/revenueModel.js";
 import Branch from "../models/branchModel.js";
+import BranchRevenueModel from "../models/branchRevenueModel.js";
 import mongoose from "mongoose";
 
 const createRevenue = asyncHandler(async (req, res) => {
@@ -54,7 +55,34 @@ const createRevenue = asyncHandler(async (req, res) => {
   }
 });
 
+const createBranchRevenue = asyncHandler(async (req, res) => {
+  const { revenueAchieved } = req.body;
 
+  if (typeof revenueAchieved !== 'number' || revenueAchieved < 0) {
+    return res.status(400).json({ status: false, message: "Invalid revenue achieved value" });
+  }
+
+  const branchRevenue = await BranchRevenueModel.create({
+    revenueAchieved,
+    date: new Date(),
+  });
+
+  if (branchRevenue) {
+    res.status(201).json({
+      status: true,
+      message: "Branch revenue created successfully",
+      branchRevenue,
+    });
+  } else {
+    res.status(400).json({ status: false, message: "Invalid branch revenue data" });
+  }
+});
+
+const getAllBranchRevenue = asyncHandler(async (req, res) => {
+  const branchRevenues = await BranchRevenueModel.find();
+
+  res.status(200).json(branchRevenues);
+});
 
 // Get all revenue entries
 const getRevenues = asyncHandler(async (req, res) => {
@@ -158,4 +186,6 @@ export {
   getRevenueById,
   updateRevenue,
   deleteRevenue,
+  createBranchRevenue,
+  getAllBranchRevenue,
 };

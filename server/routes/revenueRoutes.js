@@ -1,9 +1,8 @@
 import express from "express";
 import {
   createRevenue,
-//   deleteRevenue,
-//   getRevenueById,
-//   getRevenues,
+  createBranchRevenue,
+  getAllBranchRevenue,
       updateRevenue,
       getRevenues
 } from "../controllers/revenueController.js";
@@ -17,6 +16,7 @@ router.post("/create", protectRoute, createRevenue);
  router.get("/all", protectRoute,  getRevenues);
 // router.get("/detail/:id", protectRoute, checkPermission("can view revenue details"), getRevenueById);
 router.put("/update/:id", protectRoute, updateRevenue);
-// router.delete("/delete/:id", protectRoute, checkPermission("can delete revenues"), deleteRevenue);
+router.post("/branch-revenue", protectRoute, createBranchRevenue);
+router.get("/branch-revenue/all", protectRoute, getAllBranchRevenue);
 
 export default router;

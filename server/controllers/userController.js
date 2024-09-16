@@ -39,7 +39,7 @@ const loginUser = asyncHandler(async (req, res) => {
     });
   }
 
-  const role = await Role.findById(user.role).select('permissions'); 
+  const role = await Role.findById(user.role).select('permissions branch');
 
   if (!role) {
     return res.status(500).json({
@@ -52,6 +52,7 @@ const loginUser = asyncHandler(async (req, res) => {
   const responseUser = {
     ...user.toObject(),
     token,
+    branch: role.branch,
     permissions: role.permissions, 
   };
 

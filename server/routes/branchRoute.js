@@ -13,8 +13,8 @@ const router = express.Router();
 
 router.post("/create", protectRoute, checkPermission("can create branches"), createBranch);
 router.get("/get", protectRoute, checkPermission("can view branches"), getBranches);
-router.get("/detail/:id", protectRoute, checkPermission("can view branch details"), getBranchById);
-router.put("/update/:id", protectRoute, checkPermission("can update branches"), updateBranch);
+router.get("/detail/:id", protectRoute, getBranchById);
+router.put("/update/:id", protectRoute, updateBranch);
 router.delete("/delete/:id", protectRoute, checkPermission("can delete branches"), deleteBranch);
 
 export default router;

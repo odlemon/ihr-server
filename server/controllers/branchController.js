@@ -58,25 +58,29 @@ const getBranchById = asyncHandler(async (req, res) => {
 
 const updateBranch = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, description } = req.body;
-
+  const { name, description, revenueAchieved } = req.body;
+  console.log(req.body)
   const branch = await Branch.findById(id);
 
   if (branch) {
+    // Update the branch fields with provided data or keep existing values
     branch.name = name || branch.name;
     branch.description = description || branch.description;
+    branch.revenueAchieved = revenueAchieved !== undefined ? revenueAchieved : branch.revenueAchieved;
 
-    const updatedBranch = await Branch.save();
+    // Save the updated branch document
+    const updatedBranch = await branch.save();
 
     res.status(200).json({
       status: true,
-      message: "branch updated successfully",
+      message: "Branch updated successfully",
       branch: updatedBranch,
     });
   } else {
-    res.status(404).json({ status: false, message: "branch not found" });
+    res.status(404).json({ status: false, message: "Branch not found" });
   }
 });
+
 
 const deleteBranch = asyncHandler(async (req, res) => {
   const { id } = req.params;

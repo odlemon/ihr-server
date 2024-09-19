@@ -12,6 +12,7 @@ import {
   updateTask,
   updateTaskStage,
   getAllTasks,
+  departmentGraph,
 } from "../controllers/taskController.js";
 import { evaluatePerformance } from "../controllers/performanceController.js";
 import { protectRoute } from "../middleware/authMiddleware.js";
@@ -25,6 +26,7 @@ router.post("/activity/:id", protectRoute, checkPermission("can add task activit
 router.get("/all", protectRoute, checkPermission("can view all tasks"), getAllTasks);
 
 router.get("/dashboard", protectRoute, checkPermission("can view dashboard"), dashboardStatistics);
+router.get("/departmentGraph", protectRoute, checkPermission("can view dashboard"), departmentGraph);
 
 router.get("/", protectRoute, checkPermission("can view tasks"), getTasks);
 router.get("/:id", protectRoute, checkPermission("can view task details"), getTask);

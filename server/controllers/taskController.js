@@ -285,6 +285,15 @@ const getAllTasks = asyncHandler(async (req, res) => {
 
   const tasks = await queryResult;
 
+  const currentDate = new Date();
+
+  for (let task of tasks) {
+    if (task.date && new Date(task.date) < currentDate) {
+      task.stage = "overdue";
+      await task.save(); 
+    }
+  }
+
   res.status(200).json({
     status: true,
     tasks,
@@ -600,6 +609,84 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
   }
 });
 
+const departmentGraph = asyncHandler(async (req, res) => {
+  // Find tasks and populate the team and kpi fields
+  let queryResult = Task.find({ "kpi.id": { $ne: null } })  // Only tasks with an assigned KPI
+    .populate({
+      path: "team",
+      select: "name title email department", // Get user details along with department
+    })
+    .populate({
+      path: "kpi.id",
+      select: "name type", // Retrieve KPI details from the KPI model
+    })
+    .sort({ _id: -1 });
+
+  const tasks = await queryResult;
+
+  // Group tasks by KPI and department
+  const kpiMap = new Map();
+
+  for (const task of tasks) {
+    if (task.kpi && task.kpi.id && task.team.length > 0) {
+      const kpiId = task.kpi.id._id;
+      const kpiName = task.kpi.id.name;
+      const kpiType = task.kpi.id.type;
+      const department = task.team[0]?.department;
+
+      // Initialize KPI entry if not already present
+      if (!kpiMap.has(kpiId)) {
+        kpiMap.set(kpiId, {
+          id: kpiId,
+          name: kpiName,
+          type: kpiType,
+          departments: new Map(), // Map to aggregate metrics by department
+        });
+      }
+
+      const kpiEntry = kpiMap.get(kpiId);
+
+      // Initialize department entry if not already present
+      if (!kpiEntry.departments.has(department)) {
+        kpiEntry.departments.set(department, {
+          monetaryValue: 0,
+          monetaryValueAchieved: 0,
+          percentValue: 0,
+          percentValueAchieved: 0,
+        });
+      }
+
+      const departmentMetrics = kpiEntry.departments.get(department);
+
+      // Aggregate metrics based on KPI type
+      if (kpiType === "Monetary") {
+        departmentMetrics.monetaryValue += task.monetaryValue || 0;
+        departmentMetrics.monetaryValueAchieved += task.monetaryValueAchieved || 0;
+      } else if (kpiType === "Percentage") {
+        departmentMetrics.percentValue += task.percentValue || 0;
+        departmentMetrics.percentValueAchieved += task.percentValueAchieved || 0;
+      }
+    }
+  }
+
+  // Convert departments map to array for each KPI
+  const uniqueKPIs = Array.from(kpiMap.values()).map(kpi => ({
+    id: kpi.id,
+    name: kpi.name,
+    type: kpi.type,
+    departments: Array.from(kpi.departments).map(([department, metrics]) => ({
+      department,
+      metrics,
+    })),
+  }));
+
+  // Respond with the unique KPIs with aggregated metrics and departments
+  res.status(200).json({
+    status: true,
+    assignedKPIs: uniqueKPIs, // Return unique KPIs with metrics for each department
+  });
+});
+
 export {
   createSubTask,
   createTask,
@@ -613,4 +700,5 @@ export {
   updateTask,
   updateTaskStage,
   getAllTasks,
+  departmentGraph,
 };

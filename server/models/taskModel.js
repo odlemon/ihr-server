@@ -13,7 +13,7 @@ const taskSchema = new Schema(
     stage: {
       type: String,
       default: "todo",
-      enum: ["todo", "in progress", "completed"],
+      enum: ["todo", "in progress", "completed", "overdue"],
     },
     status: {
       type: String,
@@ -25,7 +25,7 @@ const taskSchema = new Schema(
         "Amber Zone",
         "Red Zone",
       ],
-    },
+    }, 
     activities: [
       {
         type: {

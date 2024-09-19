@@ -12,6 +12,8 @@ import { checkPermission } from "../middleware/checkPermission.js";
 
 const router = express.Router();
 
+
+
 router.post("/create", protectRoute, checkPermission("can create departments"), createDepartment);
 router.post("/get", protectRoute, checkPermission("can view departments"), getDepartments);
 router.get("/all", protectRoute, checkPermission("can view all departments"), getAllDepartments);

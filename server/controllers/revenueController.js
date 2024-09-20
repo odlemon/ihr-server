@@ -121,7 +121,7 @@ const getRevenueById = asyncHandler(async (req, res) => {
 const updateRevenue = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { revenueName, startDate, endDate, totalTarget, branchTargets } = req.body;
-
+  console.log(req.body)
   const revenue = await Revenue.findById(id);
 
   if (!revenue) {

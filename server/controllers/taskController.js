@@ -279,7 +279,7 @@ const getAllTasks = asyncHandler(async (req, res) => {
   let queryResult = Task.find({})
     .populate({
       path: "team",
-      select: "name title email",
+      select: "name title email department", // Include department in the population
     })
     .sort({ _id: -1 });
 
@@ -290,15 +290,25 @@ const getAllTasks = asyncHandler(async (req, res) => {
   for (let task of tasks) {
     if (task.date && new Date(task.date) < currentDate) {
       task.stage = "overdue";
-      await task.save(); 
+      await task.save();
     }
   }
 
+  // Add department to each task in the response
+  const tasksWithDepartment = tasks.map(task => {
+    const department = task.team[0]?.department || "Unknown"; // Safely access department
+    return {
+      ...task._doc, // Spread task properties
+      department,
+    };
+  });
+
   res.status(200).json({
     status: true,
-    tasks,
+    tasks: tasksWithDepartment,
   });
 });
+
 
 
 const getTask = asyncHandler(async (req, res) => {
@@ -680,7 +690,6 @@ const departmentGraph = asyncHandler(async (req, res) => {
     })),
   }));
 
-  // Respond with the unique KPIs with aggregated metrics and departments
   res.status(200).json({
     status: true,
     assignedKPIs: uniqueKPIs, // Return unique KPIs with metrics for each department

@@ -5,6 +5,7 @@ import Notice from "../models/notis.js";
 import crypto from 'crypto';
 import mongoose from "mongoose";
 import Role from "../models/roleModel.js";
+import Department from "../models/departmentModel.js";
 
 function generateRandomPassword(length = 10) {
   return crypto.randomBytes(Math.ceil(length / 2))

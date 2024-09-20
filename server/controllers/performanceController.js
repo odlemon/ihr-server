@@ -8,7 +8,7 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
     const tasks = await Task.find({
       team: userId, 
       isTrashed: false,
-    }).populate('team', 'name');
+    }).populate('team', 'name').populate('kpi', 'name');
 
     if (tasks.length === 0) {
       return res.status(200).json({ status: false, message: "User has no tasks assigned." });
@@ -48,7 +48,8 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
       totalTasks,
       tasks: tasks.map(task => ({
         _id: task._id,
-        name: task.name,
+        name: task.title,
+        kpiName: task.kpi ? task.kpi.name : 'N/A',
         created_at: task.created_at,
         stage: task.stage,
       })),

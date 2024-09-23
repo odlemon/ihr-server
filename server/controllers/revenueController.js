@@ -5,55 +5,58 @@ import BranchRevenueModel from "../models/branchRevenueModel.js";
 import mongoose from "mongoose";
 
 const createRevenue = asyncHandler(async (req, res) => {
-  const { revenueName, startDate, endDate, totalTarget, branchTargets } = req.body;
+  const { revenueName, startDate, endDate, totalTarget, targetBranches } = req.body;
 
   if (typeof totalTarget !== 'number' || totalTarget <= 0) {
     return res.status(400).json({ status: false, message: "Invalid total target" });
   }
 
-  if (typeof branchTargets !== 'object' || branchTargets === null) {
-    return res.status(400).json({ status: false, message: "Invalid branch targets" });
+  if (!Array.isArray(targetBranches) || targetBranches.length === 0) {
+    return res.status(400).json({ status: false, message: "Invalid target branches data" });
   }
 
-  const revenue = await Revenue.create({
-    totalTarget: totalTarget,
-    startDate: startDate,
-    endDate: endDate,
-    revenueName: revenueName,
-    date: new Date(),
-  });
+  // Validate each target branch
+  for (const branch of targetBranches) {
+    if (!branch.id || !branch.name || typeof branch.target !== 'number' || branch.target < 0) {
+      return res.status(400).json({ status: false, message: "Invalid branch data" });
+    }
+  }
 
-  if (revenue) {
-    const updatePromises = Object.entries(branchTargets).map(async ([branchId, revenueTarget]) => {
-      if (!mongoose.Types.ObjectId.isValid(branchId) || typeof revenueTarget !== 'number') {
-        throw new Error("Invalid branchId or revenueTarget");
-      }
-      return Branch.findByIdAndUpdate(
-        branchId,
-        { $set: { revenueTarget } },
-        { new: true }
-      );
+  try {
+    const revenue = await Revenue.create({
+      revenueName,
+      startDate,
+      endDate,
+      totalTarget,
+      targetBranches: targetBranches.map(branch => ({
+        id: branch.id,
+        name: branch.name,
+        target: branch.target,
+        achieved: 0 // Initialize achieved to 0
+      })),
+      date: new Date(),
     });
 
-    try {
-      const updatedBranches = await Promise.all(updatePromises);
+    if (revenue) {
       res.status(201).json({
-        revenue,
-        updatedBranches
+        status: true,
+        message: "Revenue created successfully",
+        data: revenue
       });
-    } catch (error) {
-      console.error("Error updating branches:", error);
-      res.status(500).json({
-        status: false,
-        message: "An error occurred while updating branches",
-        error: error.message,
-        stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
-      });
+    } else {
+      res.status(400).json({ status: false, message: "Failed to create revenue" });
     }
-  } else {
-    return res.status(400).json({ status: false, message: "Invalid revenue data" });
+  } catch (error) {
+    console.error("Error creating revenue:", error.message); // Log the error message
+    res.status(500).json({
+      status: false,
+      message: "An error occurred while creating revenue",
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
   }
 });
+
 
 const createBranchRevenue = asyncHandler(async (req, res) => {
   const { revenueAchieved } = req.body;

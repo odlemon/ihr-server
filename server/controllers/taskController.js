@@ -696,6 +696,75 @@ const departmentGraph = asyncHandler(async (req, res) => {
   });
 });
 
+const individualDepartmentGraph = asyncHandler(async (req, res) => {
+  // Find tasks and populate the team and kpi fields
+  let queryResult = Task.find({ "kpi.id": { $ne: null } })  // Only tasks with an assigned KPI
+    .populate({
+      path: "team",
+      select: "name title email department",
+    })
+    .populate({
+      path: "kpi.id",
+      select: "name type",
+    })
+    .sort({ _id: -1 });
+
+  const tasks = await queryResult;
+
+  // Group tasks by department and KPI
+  const departmentMap = new Map();
+
+  for (const task of tasks) {
+    if (task.kpi && task.kpi.id && task.team.length > 0) {
+      const kpiId = task.kpi.id._id.toString();
+      const kpiName = task.kpi.id.name;
+      const kpiType = task.kpi.id.type;
+      const department = task.team[0]?.department;
+
+      // Initialize department entry if not already present
+      if (!departmentMap.has(department)) {
+        departmentMap.set(department, new Map());
+      }
+
+      const departmentKPIs = departmentMap.get(department);
+
+      // Initialize KPI entry if not already present
+      if (!departmentKPIs.has(kpiId)) {
+        departmentKPIs.set(kpiId, {
+          id: kpiId,
+          name: kpiName,
+          type: kpiType,
+          monetaryValue: 0,
+          monetaryValueAchieved: 0,
+          percentValue: 0,
+          percentValueAchieved: 0,
+        });
+      }
+
+      const kpiEntry = departmentKPIs.get(kpiId);
+
+      // Aggregate metrics based on KPI type
+      if (kpiType === "Monetary") {
+        kpiEntry.monetaryValue += task.monetaryValue || 0;
+        kpiEntry.monetaryValueAchieved += task.monetaryValueAchieved || 0;
+      } else if (kpiType === "Percentage") {
+        kpiEntry.percentValue += task.percentValue || 0;
+        kpiEntry.percentValueAchieved += task.percentValueAchieved || 0;
+      }
+    }
+  }
+
+  // Convert the nested maps to a more frontend-friendly structure
+  const departmentsData = Array.from(departmentMap).map(([department, kpis]) => ({
+    department,
+    kpis: Array.from(kpis.values()),
+  }));
+
+  res.status(200).json({
+    status: true,
+    departments: departmentsData,
+  });
+});
 export {
   createSubTask,
   createTask,
@@ -710,4 +779,5 @@ export {
   updateTaskStage,
   getAllTasks,
   departmentGraph,
+  individualDepartmentGraph,
 };

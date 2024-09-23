@@ -3,7 +3,7 @@ import {
   createRevenue,
   createBranchRevenue,
   getAllBranchRevenue,
-      updateRevenue,
+  updateRevenueBranch,
       getRevenues
 } from "../controllers/revenueController.js";
 import { protectRoute } from "../middleware/authMiddleware.js";
@@ -15,8 +15,7 @@ router.post("/create", protectRoute, createRevenue);
 // router.post("/get", protectRoute, checkPermission("can view revenues"), getRevenues);
  router.get("/all", protectRoute,  getRevenues);
 // router.get("/detail/:id", protectRoute, checkPermission("can view revenue details"), getRevenueById);
-router.put("/update/:id", protectRoute, updateRevenue);
+router.put("/update/:id", protectRoute, updateRevenueBranch);
 router.post("/branch-revenue", protectRoute, createBranchRevenue);
-router.get("/branch-revenue/all", protectRoute, getAllBranchRevenue);
 
 export default router;

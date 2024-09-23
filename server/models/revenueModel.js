@@ -2,10 +2,16 @@ import mongoose, { Schema } from "mongoose";
 
 const targetBranchSchema = new Schema({
   id: { type: String, required: true },
-  name: { type: String, required: true },
   target: { type: Number, required: true },
-  achieved: { type: Number, default: 0 }
+  achieved: { type: Number, default: 0 },
+  achievedHistory: [
+    {
+      value: { type: Number, required: true },  
+      date: { type: Date, default: Date.now }  
+    }
+  ]
 });
+
 
 const revenueSchema = new Schema(
   {

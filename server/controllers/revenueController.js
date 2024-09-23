@@ -17,7 +17,7 @@ const createRevenue = asyncHandler(async (req, res) => {
 
   // Validate each target branch
   for (const branch of targetBranches) {
-    if (!branch.id || !branch.name || typeof branch.target !== 'number' || branch.target < 0) {
+    if (!branch.id || typeof branch.target !== 'number' || branch.target < 0) {
       return res.status(400).json({ status: false, message: "Invalid branch data" });
     }
   }
@@ -30,9 +30,8 @@ const createRevenue = asyncHandler(async (req, res) => {
       totalTarget,
       targetBranches: targetBranches.map(branch => ({
         id: branch.id,
-        name: branch.name,
         target: branch.target,
-        achieved: 0 // Initialize achieved to 0
+        achieved: 0
       })),
       date: new Date(),
     });
@@ -89,10 +88,29 @@ const getAllBranchRevenue = asyncHandler(async (req, res) => {
 
 // Get all revenue entries
 const getRevenues = asyncHandler(async (req, res) => {
-  const revenues = await Revenue.find();
+  try {
+    const revenues = await Revenue.find(); // Fetch all revenue documents
 
-  res.status(200).json(revenues);
+    if (revenues.length === 0) {
+      return res.status(404).json({ status: false, message: "No revenues found" });
+    }
+
+    res.status(200).json({
+      status: true,
+      message: "Revenues retrieved successfully",
+      data: revenues,
+    });
+  } catch (error) {
+    console.error("Error retrieving revenues:", error.message); // Log the error message
+    res.status(500).json({
+      status: false,
+      message: "An error occurred while retrieving revenues",
+      error: error.message,
+      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
+    });
+  }
 });
+
 
 // Get a single revenue entry by ID
 const getRevenueById = asyncHandler(async (req, res) => {
@@ -121,57 +139,57 @@ const getRevenueById = asyncHandler(async (req, res) => {
   }
 });
 
-const updateRevenue = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const { revenueName, startDate, endDate, totalTarget, branchTargets } = req.body;
-  console.log(req.body)
-  const revenue = await Revenue.findById(id);
 
-  if (!revenue) {
-    return res.status(404).json({ status: false, message: "Revenue not found" });
-  }
-
-  // Update revenue fields if provided
-  revenue.revenueName = revenueName || revenue.revenueName;
-  revenue.startDate = startDate || revenue.startDate;
-  revenue.endDate = endDate || revenue.endDate;
-  revenue.totalTarget = totalTarget || revenue.totalTarget;
-
+const updateRevenueBranch = asyncHandler(async (req, res) => {
+ 
+  const { revenueId,branchId, target, achieved } = req.body; // Extract branchId, target, and achieved from the body
   try {
-    // If branch targets are provided, update branches
-    if (branchTargets && typeof branchTargets === 'object' && !Array.isArray(branchTargets)) {
-      const updatePromises = Object.entries(branchTargets).map(async ([branchId, revenueTarget]) => {
-        if (!mongoose.Types.ObjectId.isValid(branchId) || typeof revenueTarget !== 'number') {
-          throw new Error("Invalid branchId or revenueTarget");
-        }
-        return Branch.findByIdAndUpdate(
-          branchId,
-          { $set: { revenueTarget } },
-          { new: true }
-        );
-      });
-
-      await Promise.all(updatePromises);
+    // Find the revenue by ID
+    const revenue = await Revenue.findById(revenueId);
+    if (!revenue) {
+      return res.status(404).json({ status: false, message: "Revenue not found" });
     }
 
-    // Save the updated revenue
+    // Find the specific branch in the revenue's targetBranches array
+    const branchToUpdate = revenue.targetBranches.find(b => b.id === branchId);
+
+    if (!branchToUpdate) {
+      return res.status(404).json({ status: false, message: "Branch not found in the revenue" });
+    }
+
+    // Update the branch's target if provided
+    if (typeof target === 'number') {
+      branchToUpdate.target = target;
+    }
+
+    // Update the branch's achieved and log history if provided
+    if (typeof achieved === 'number') {
+      branchToUpdate.achieved = achieved;
+      branchToUpdate.achievedHistory.push({
+        value: achieved,
+        date: new Date(),
+      });
+    }
+
+    // Save the updated revenue document
     const updatedRevenue = await revenue.save();
 
     res.status(200).json({
       status: true,
-      message: "Revenue and branches updated successfully",
+      message: "Branch updated successfully",
       revenue: updatedRevenue,
     });
   } catch (error) {
-    console.error("Error updating branches:", error);
+    console.error("Error updating branch:", error);
     res.status(500).json({
       status: false,
-      message: "An error occurred while updating branches",
+      message: "An error occurred while updating the branch",
       error: error.message,
-      stack: process.env.NODE_ENV === 'development' ? error.stack : undefined
     });
   }
 });
+
+
 
 
 // Delete a revenue entry
@@ -187,7 +205,7 @@ export {
   createRevenue,
   getRevenues,
   getRevenueById,
-  updateRevenue,
+  updateRevenueBranch,
   deleteRevenue,
   createBranchRevenue,
   getAllBranchRevenue,

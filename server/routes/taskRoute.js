@@ -4,6 +4,7 @@ import {
   createTask,
   dashboardStatistics,
   deleteRestoreTask,
+  deleteTask,
   duplicateTask,
   getTask,
   getTasks,
@@ -40,5 +41,7 @@ router.put("/change-stage/:id", protectRoute, checkPermission("can change task s
 router.put("/:id", protectRoute, checkPermission("can trash task"), trashTask);
 
 router.delete("/delete-restore/:id?", protectRoute, checkPermission("can delete task"), deleteRestoreTask);
+
+router.delete("/delete/:id?", protectRoute, checkPermission("can trash task"), deleteTask);
 
 export default router;

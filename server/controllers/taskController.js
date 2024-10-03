@@ -427,6 +427,27 @@ const deleteRestoreTask = asyncHandler(async (req, res) => {
   }
 });
 
+
+const deleteTask = asyncHandler(async (req, res) => {
+  try {
+    const { id } = req.params;
+
+    await Task.findByIdAndDelete(id);
+
+    res.status(200).json({
+      status: true,
+      message: `Task deleted successfully.`,
+    });
+  } catch (error) {
+    return res.status(400).json({
+      status: false,
+      message: error.message,
+    });
+  }
+});
+
+
+
 const dashboardStatistics = asyncHandler(async (req, res) => {
   try {
     const { userId, isAdmin } = req.user;
@@ -770,6 +791,7 @@ export {
   createTask,
   dashboardStatistics,
   deleteRestoreTask,
+  deleteTask,
   duplicateTask,
   getTask,
   getTasks,

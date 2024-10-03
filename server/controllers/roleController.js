@@ -64,8 +64,8 @@ const getRoleById = asyncHandler(async (req, res) => {
 
 const updateRole = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, permissions, description, branchId } = req.body;
-
+  const { name, permissions, description } = req.body;
+  console.log(req.body);
   const role = await Role.findById(id);
 
   if (role) {
@@ -74,14 +74,6 @@ const updateRole = asyncHandler(async (req, res) => {
 
     if (permissions) {
       role.permissions = permissions;
-    }
-
-    if (branchId) {
-      const branch = await Branch.findById(branchId);
-      if (!branch) {
-        return res.status(400).json({ status: false, message: "Branch not found" });
-      }
-      role.branch = branchId;
     }
 
     const updatedRole = await role.save();

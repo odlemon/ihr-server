@@ -28,7 +28,7 @@ router.put("/read-noti", protectRoute, markNotificationRead);
 router.put("/change-password", protectRoute, changeUserPassword);
 router
   .route("/:id")
-  .put(protectRoute, isAdminRoute, activateUserProfile)
-  .delete(protectRoute, isAdminRoute, deleteUserProfile);
+  .put(protectRoute,  activateUserProfile)
+  .delete(protectRoute, deleteUserProfile);
 
 export default router;

@@ -65,7 +65,7 @@ const getRoleById = asyncHandler(async (req, res) => {
 const updateRole = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { name, permissions, description } = req.body;
-  console.log(req.body);
+
   const role = await Role.findById(id);
 
   if (role) {

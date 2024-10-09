@@ -5,7 +5,7 @@ import Notice from "../models/notis.js";
 import crypto from 'crypto';
 import mongoose from "mongoose";
 import Role from "../models/roleModel.js";
-import Department from "../models/departmentModel.js";
+import Branch from "../models/branchModel.js";
 
 function generateRandomPassword(length = 10) {
   return crypto.randomBytes(Math.ceil(length / 2))
@@ -64,12 +64,17 @@ const loginUser = asyncHandler(async (req, res) => {
 
 
 const registerUser = asyncHandler(async (req, res) => {
-  const { name, email, isAdmin, role, title, department } = req.body;
+  const { name, email, isAdmin, role, title, department, branchId } = req.body;
 
   try {
 
     if (!mongoose.Types.ObjectId.isValid(role)) {
       return res.status(400).json({ status: false, message: "Invalid role ID format" });
+    }
+
+    const branch = await Branch.findById(branchId);
+    if (!branch) {
+      return res.status(400).json({ status: false, message: "Branch not found" });
     }
 
     const roleId = new mongoose.Types.ObjectId(role);
@@ -89,9 +94,10 @@ const registerUser = asyncHandler(async (req, res) => {
       email,
       password,
       isAdmin,
-      role: roleId, // Use the converted ObjectId
+      role: roleId,
       department,
       title,
+      branch: branchId,
     });
 
     if (user) {
@@ -145,7 +151,7 @@ const getTeamList = asyncHandler(async (req, res) => {
     query = { ...query, ...searchQuery };
   }
 
-  const users = await User.find(query).select("name title role email isActive department");
+  const users = await User.find(query).select("name title role email isActive department branch");
 
   res.status(201).json(users);
 });

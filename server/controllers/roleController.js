@@ -76,6 +76,13 @@ const updateRole = asyncHandler(async (req, res) => {
 
   const role = await Role.findById(id);
 
+  const roleExists = await Role.findOne({ name });
+
+  if (roleExists) {
+    console.error("Role already exists in this branch");
+    return res.status(400).json({ status: false, message: "Role already exists in this branch" });
+  }
+
   if (role) {
     role.name = name || role.name;
     role.description = description || role.description;

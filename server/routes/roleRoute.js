@@ -6,6 +6,8 @@ import {
   getRoles,
   updateRole,
   getAllRoles,
+  getAllBranchIds,
+  createBulkRoles,
 } from "../controllers/roleController.js";
 import { protectRoute } from "../middleware/authMiddleware.js";
 import { checkPermission } from "../middleware/checkPermission.js";
@@ -14,6 +16,8 @@ const router = express.Router();
 
 router.post("/create", protectRoute, checkPermission("can create roles"), createRole);
 router.post("/get", protectRoute, checkPermission("can view roles"), getRoles);
+router.get("/br",  getAllBranchIds);
+router.post("/bulk",  createBulkRoles);
 router.get("/all", protectRoute, checkPermission("can view all roles"), getAllRoles);
 router.get("/detail/:id", protectRoute, checkPermission("can view role details"), getRoleById);
 router.put("/update/:id", protectRoute, checkPermission("can update roles"), updateRole);

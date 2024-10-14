@@ -196,45 +196,39 @@ const markNotificationRead = asyncHandler(async (req, res) => {
 const updateUserProfile = asyncHandler(async (req, res) => {
   try {
     console.log("Request Body:", req.body);
-    const { userId, isAdmin } = req.user;
-    const { _id } = req.body;
+    
+    const { _id } = req.body; // Get the ID directly from the request body
 
-    const id =
-      isAdmin && userId === _id
-        ? userId
-        : isAdmin && userId !== _id
-        ? _id
-        : userId;
-
-    const user = await User.findById(id);
+    const user = await User.findById(_id);
 
     if (user) {
+      // Update user fields
       user.name = req.body.name || user.name;
-      // user.email = req.body.email || user.email;
+      // user.email = req.body.email || user.email; // Uncomment if email should be updated
       user.title = req.body.title || user.title;
       user.role = req.body.role || user.role;
       user.department = req.body.department || user.department;
       user.profilePicture = req.body.profilePictureURL || user.profilePicture;
+      user.branch = req.body.branch || user.branch;
 
       const updatedUser = await user.save();
 
-      user.password = undefined;
+      // Remove password from the response
+      updatedUser.password = undefined;
 
-      res.status(201).json({
+      res.status(200).json({
         status: true,
         message: "Profile Updated Successfully.",
         user: updatedUser,
       });
     } else {
-      res.status(404).json({ status: false, message: "User not found baby" });
+      res.status(404).json({ status: false, message: "User not found." });
     }
   } catch (error) {
     console.error("Error updating user profile:", {
       message: error.message,
       stack: error.stack,
       requestBody: req.body,
-      userId: req.user.userId,
-      isAdmin: req.user.isAdmin,
     });
 
     res.status(500).json({
@@ -244,6 +238,7 @@ const updateUserProfile = asyncHandler(async (req, res) => {
     });
   }
 });
+
 
 
 const activateUserProfile = asyncHandler(async (req, res) => {

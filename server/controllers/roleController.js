@@ -71,23 +71,23 @@ const getRoleById = asyncHandler(async (req, res) => {
 });
 
 const updateRole = asyncHandler(async (req, res) => {
-  const { id } = req.params;
-  const { name, permissions, description } = req.body;
+  try {
+    const { id } = req.params;
+    const { name, permissions, description, branch } = req.body;
 
-  const role = await Role.findById(id);
+    console.log("Request body:", req.body);
 
-  const roleExists = await Role.findOne({ name });
+    const role = await Role.findById(id);
 
-  if (roleExists) {
-    console.error("Role already exists in this branch");
-    return res.status(400).json({ status: false, message: "Role already exists in this branch" });
-  }
+    if (!role) {
+      return res.status(404).json({ status: false, message: "Role not found" });
+    }
 
-  if (role) {
+    // Update fields
     role.name = name || role.name;
     role.description = description || role.description;
 
-    if (permissions) {
+    if (permissions && Array.isArray(permissions)) {
       role.permissions = permissions;
     }
 
@@ -98,10 +98,25 @@ const updateRole = asyncHandler(async (req, res) => {
       message: "Role updated successfully",
       role: updatedRole,
     });
-  } else {
-    res.status(404).json({ status: false, message: "Role not found" });
+
+  } catch (error) {
+    // Check for MongoDB duplicate key error (code 11000)
+    if (error.code === 11000 && error.keyPattern && error.keyPattern.name && error.keyPattern.branch) {
+      console.error(`Duplicate role found: ${error.keyValue.name} in branch ${error.keyValue.branch}`);
+      return res.status(400).json({
+        status: false,
+        message: "A role with the same name and branch already exists.",
+      });
+    }
+
+    // For any other errors
+    console.error(`Error updating role with id ${req.params.id}:`, error);
+    res.status(500).json({ status: false, message: "Server error" });
   }
 });
+
+
+
 
 const deleteRole = asyncHandler(async (req, res) => {
   const { id } = req.params;

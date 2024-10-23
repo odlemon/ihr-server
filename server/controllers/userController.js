@@ -151,7 +151,7 @@ const getTeamList = asyncHandler(async (req, res) => {
     query = { ...query, ...searchQuery };
   }
 
-  const users = await User.find(query).select("name title role email isActive department branch");
+  const users = await User.find(query).select("name title role email isActive department branch comment");
 
   res.status(201).json(users);
 });
@@ -239,6 +239,47 @@ const updateUserProfile = asyncHandler(async (req, res) => {
   }
 });
 
+const updateComment = asyncHandler(async (req, res) => {
+  try {
+    console.log("Request Body:", req.body);
+    
+    const { _id, comment } = req.body; // Get the ID and comment directly from the request body
+
+    const user = await User.findById(_id);
+
+    if (user) {
+      // Update the comment field
+      user.comment = comment || user.comment;
+
+      const updatedUser = await user.save();
+
+      // Remove password from the response
+      updatedUser.password = undefined;
+
+      res.status(200).json({
+        status: true,
+        message: "Comment Updated Successfully.",
+        user: updatedUser,
+      });
+    } else {
+      res.status(404).json({ status: false, message: "User not found." });
+    }
+  } catch (error) {
+    console.error("Error updating comment:", {
+      message: error.message,
+      stack: error.stack,
+      requestBody: req.body,
+    });
+
+    res.status(500).json({
+      status: false,
+      message: "An error occurred while updating the comment.",
+      error: error.message,
+    });
+  }
+});
+
+
 
 
 const activateUserProfile = asyncHandler(async (req, res) => {
@@ -311,4 +352,5 @@ export {
   updateUserProfile,
   getNotificationsList,
   markNotificationRead,
+  updateComment,
 };

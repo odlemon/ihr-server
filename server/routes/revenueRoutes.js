@@ -3,6 +3,7 @@ import {
   createRevenue,
   createBranchRevenue,
   getAllBranchRevenue,
+  deleteRevenue,
   updateRevenueBranch,
       getRevenues
 } from "../controllers/revenueController.js";
@@ -16,6 +17,7 @@ router.post("/create", protectRoute, createRevenue);
  router.get("/all", protectRoute,  getRevenues);
 // router.get("/detail/:id", protectRoute, checkPermission("can view revenue details"), getRevenueById);
 router.put("/update/:id", protectRoute, updateRevenueBranch);
+router.delete("/delete/:id", protectRoute, deleteRevenue);
 router.post("/branch-revenue", protectRoute, createBranchRevenue);
 
 export default router;

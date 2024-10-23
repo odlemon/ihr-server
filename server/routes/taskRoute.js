@@ -25,7 +25,7 @@ const router = express.Router();
 router.post("/create", protectRoute, checkPermission("can create tasks"), createTask);
 router.post("/duplicate/:id", protectRoute, checkPermission("can duplicate task"), duplicateTask);
 router.post("/activity/:id", protectRoute, checkPermission("can add task activity"), postTaskActivity);
-router.get("/all", protectRoute, checkPermission("can view all tasks"), getAllTasks);
+router.get("/all", protectRoute, getAllTasks);
 
 router.get("/dashboard", protectRoute, checkPermission("can view dashboard"), dashboardStatistics);
 router.get("/departmentGraph", protectRoute, checkPermission("can view dashboard"), departmentGraph);

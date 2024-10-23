@@ -4,11 +4,12 @@ const taskSchema = new Schema(
   {
     title: { type: String, required: true },
     branch: { type: String, required: true },
+    department: { type: String, required: true },
     date: { type: Date, default: new Date() },
     priority: {
       type: String,
       default: "normal",
-      enum: ["high", "medium", "normal", "low"],
+      enum: ["high", "medium", "low"],
     },
     stage: {
       type: String,
@@ -55,7 +56,8 @@ const taskSchema = new Schema(
     kpi: {
       id: { type: Schema.Types.ObjectId, ref: "KPI" },
       name: { type: String },
-      type: { type: String, enum: ["Monetary", "Percentage"] },
+      type: { type: String, enum: ["Metric", "Percentage"] },
+      
     },
     created_at: { type: Date, default: Date.now }
   },

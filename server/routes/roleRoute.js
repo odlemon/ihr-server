@@ -6,6 +6,7 @@ import {
   getRoles,
   updateRole,
   getAllRoles,
+  duplicateRole,
   getAllBranchIds,
   createBulkRoles,
 } from "../controllers/roleController.js";
@@ -15,6 +16,7 @@ import { checkPermission } from "../middleware/checkPermission.js";
 const router = express.Router();
 
 router.post("/create", protectRoute, checkPermission("can create roles"), createRole);
+router.post("/duplicate", protectRoute, checkPermission("can create roles"), duplicateRole);
 router.post("/get", protectRoute, checkPermission("can view roles"), getRoles);
 router.get("/br",  getAllBranchIds);
 router.post("/bulk",  createBulkRoles);

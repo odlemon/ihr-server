@@ -10,6 +10,7 @@ import {
   markNotificationRead,
   registerUser,
   updateUserProfile,
+  updateComment,
 } from "../controllers/userController.js";
 import { isAdminRoute, protectRoute } from "../middleware/authMiddleware.js";
 import { checkPermission } from "../middleware/checkPermission.js";
@@ -22,6 +23,9 @@ router.post("/logout", logoutUser);
 
 router.get("/get-team", protectRoute, checkPermission("can view team list"), getTeamList);
 router.get("/notifications", protectRoute, getNotificationsList);
+
+
+router.put("/comment", protectRoute, updateComment);
 
 router.put("/profile", protectRoute, updateUserProfile);
 router.put("/read-noti", protectRoute, markNotificationRead);

@@ -14,17 +14,19 @@ const userSchema = new Schema(
     tasks: [{ type: Schema.Types.ObjectId, ref: "Task" }],
     isActive: { type: Boolean, default: true },
     branch: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
+    comment: { type: String, default: "" },
   },
   { timestamps: true }
 );
 
 userSchema.pre("save", async function (next) {
   if (!this.isModified("password")) {
-    next();
+    return next(); // Use return here for better readability
   }
 
   const salt = await bcrypt.genSalt(10);
   this.password = await bcrypt.hash(this.password, salt);
+  next(); // Call next after hashing the password
 });
 
 userSchema.methods.matchPassword = async function (enteredPassword) {

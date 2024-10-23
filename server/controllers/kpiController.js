@@ -3,7 +3,7 @@ import KPI from "../models/kpiModel.js";
 import Branch from "../models/branchModel.js";
 
 const createKPI = asyncHandler(async (req, res) => {
-  const { name, type, branchId } = req.body;
+  const { name, type, branchId, weightValue } = req.body; // Extract weightValue from request body
 
   const branch = await Branch.findById(branchId);
   if (!branch) {
@@ -18,10 +18,12 @@ const createKPI = asyncHandler(async (req, res) => {
       .json({ status: false, message: "KPI already exists" });
   }
 
+  // Create the KPI document with the weightValue included
   const kpi = await KPI.create({
     name,
     type,
     branch: branchId,
+    weightValue, // Include weightValue here
   });
 
   if (kpi) {
@@ -30,6 +32,7 @@ const createKPI = asyncHandler(async (req, res) => {
     return res.status(400).json({ status: false, message: "Invalid KPI data" });
   }
 });
+
 
 const getKPIs = asyncHandler(async (req, res) => {
   const { branchId } = req.body;
@@ -70,13 +73,14 @@ const getKPIById = asyncHandler(async (req, res) => {
 
 const updateKPI = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { name, type, branchId } = req.body;
+  const { name, type, branchId, weightValue } = req.body; // Extract weightValue from request body
 
   const kpi = await KPI.findById(id);
 
   if (kpi) {
     kpi.name = name || kpi.name;
     kpi.type = type || kpi.type;
+    kpi.weightValue = weightValue !== undefined ? weightValue : kpi.weightValue; // Update weightValue if provided
 
     if (branchId) {
       const branch = await Branch.findById(branchId);
@@ -97,6 +101,7 @@ const updateKPI = asyncHandler(async (req, res) => {
     res.status(404).json({ status: false, message: "KPI not found" });
   }
 });
+
 
 const deleteKPI = asyncHandler(async (req, res) => {
   const { id } = req.params;

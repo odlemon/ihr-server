@@ -3,6 +3,7 @@ import Notice from "../models/notis.js";
 import Task from "../models/taskModel.js";
 import User from "../models/userModel.js";
 import KPI from "../models/kpiModel.js"; 
+import Department from "../models/departmentModel.js"
 
 const createTask = asyncHandler(async (req, res) => {
   try {
@@ -10,9 +11,9 @@ const createTask = asyncHandler(async (req, res) => {
     const { 
       title, team, stage, date, priority, assets, 
       monetaryValue, percentValue, kpi,
-      monetaryValueAchieved, percentValueAchieved, branch
+      monetaryValueAchieved, percentValueAchieved, branch, department
     } = req.body;
-
+    console.log(req.body)
     let kpiData;
     if (kpi && kpi.id) {
       const kpiRecord = await KPI.findById(kpi.id);
@@ -47,6 +48,7 @@ const createTask = asyncHandler(async (req, res) => {
       team,
       date,
       branch,
+      department,
       priority: priority.toLowerCase(),
       stage: stage.toLowerCase(),
       assets,
@@ -276,38 +278,65 @@ const getTasks = asyncHandler(async (req, res) => {
 });
 
 const getAllTasks = asyncHandler(async (req, res) => {
-  let queryResult = Task.find({})
-    .populate({
-      path: "team",
-      select: "name title email department", // Include department in the population
-    })
-    .sort({ _id: -1 });
+  try {
+    const queryResult = Task.find({})
+      .populate({
+        path: "team",
+        select: "name title email", // Only populate name, title, email from team
+      })
+      .sort({ _id: -1 });
 
-  const tasks = await queryResult;
+    const tasks = await queryResult;
+    const currentDate = new Date();
+    const overdueTasks = [];
 
-  const currentDate = new Date();
-
-  for (let task of tasks) {
-    if (task.date && new Date(task.date) < currentDate) {
-      task.stage = "overdue";
-      await task.save();
+    for (let task of tasks) {
+      if (task.date) {
+        const taskDate = new Date(task.date);
+        if (taskDate < currentDate) {
+          // Task is overdue
+          task.stage = "overdue";
+          overdueTasks.push(task);
+        } else if (task.stage === "overdue" && taskDate > currentDate) {
+          // Task is marked as overdue but the date is in the future, change to in progress
+          task.stage = "in progress";
+          overdueTasks.push(task);
+        }
+      }
     }
+
+    // Bulk update overdue tasks (if needed)
+    if (overdueTasks.length > 0) {
+      await Task.bulkWrite(overdueTasks.map(task => ({
+        updateOne: {
+          filter: { _id: task._id },
+          update: { stage: task.stage },
+        },
+      })));
+    }
+
+    // Directly include department from the task itself, no need to fetch it from team
+    const tasksWithDepartment = tasks.map(task => {
+      return {
+        ...task._doc, // Spread task properties
+        department: task.department || "Unknown", // Include department directly from task
+      };
+    });
+
+    res.status(200).json({
+      status: true,
+      tasks: tasksWithDepartment,
+    });
+  } catch (error) {
+    console.error(error);
+    res.status(500).json({
+      status: false,
+      message: "An error occurred while fetching tasks.",
+    });
   }
-
-  // Add department to each task in the response
-  const tasksWithDepartment = tasks.map(task => {
-    const department = task.team[0]?.department || "Unknown"; // Safely access department
-    return {
-      ...task._doc, // Spread task properties
-      department,
-    };
-  });
-
-  res.status(200).json({
-    status: true,
-    tasks: tasksWithDepartment,
-  });
 });
+
+
 
 
 
@@ -362,7 +391,7 @@ const postTaskActivity = asyncHandler(async (req, res) => {
       task.stage = "todo";
     }
 
-    if (task.kpi?.type === "Monetary" && monetaryValueAchieved) {
+    if (task.kpi?.type === "Metric" && monetaryValueAchieved) {
       task.monetaryValueAchieved = (task.monetaryValueAchieved || 0) + monetaryValueAchieved;
     } else if (task.kpi?.type === "Percentage" && percentValueAchieved) {
       task.percentValueAchieved = (task.percentValueAchieved || 0) + percentValueAchieved;
@@ -536,7 +565,7 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
       const branch = task.branch || 'Unspecified';
       const monetaryValueAchieved = task.monetaryValueAchieved || 0;
       const percentValueAchieved = task.percentValueAchieved || 0;
-      const type = task.kpi?.type || 'Monetary';
+      const type = task.kpi?.type || 'Metric';
 
       if (!kpiSummary[kpiName]) {
         kpiSummary[kpiName] = {
@@ -552,7 +581,7 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
           type: type
         };
       }
-      if (type === 'Monetary') {
+      if (type === 'Metric') {
         kpiSummary[kpiName].totalMonetaryValue += task.monetaryValue || 0;
         kpiSummary[kpiName].completedMonetaryValue += monetaryValueAchieved;
       } else if (type === 'Percentage') {
@@ -572,7 +601,7 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
           percentageRevenueAchieved: 0,
         };
       }
-      if (type === 'Monetary') {
+      if (type === 'Metric') {
         branchSummary[branch].totalMonetaryValue += task.monetaryValue || 0;
         branchSummary[branch].completedMonetaryValue += monetaryValueAchieved;
       } else if (type === 'Percentage') {
@@ -584,7 +613,7 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     const calculateRevenue = (summary) => {
       Object.keys(summary).forEach(key => {
         const data = summary[key];
-        if (data.type === 'Monetary') {
+        if (data.type === 'Metric') {
           data.revenueTarget = data.totalMonetaryValue - data.completedMonetaryValue;
           data.revenueAchieved = data.completedMonetaryValue;
         } else if (data.type === 'Percentage') {
@@ -598,7 +627,7 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     calculateRevenue(branchSummary);
 
     const overallMonetaryTotals = Object.values(kpiSummary).reduce((totals, kpi) => {
-      if (kpi.type === 'Monetary') {
+      if (kpi.type === 'Metric') {
         totals.totalMonetaryValue += kpi.totalMonetaryValue;
         totals.completedMonetaryValue += kpi.completedMonetaryValue;
       }
@@ -690,7 +719,7 @@ const departmentGraph = asyncHandler(async (req, res) => {
       const departmentMetrics = kpiEntry.departments.get(department);
 
       // Aggregate metrics based on KPI type
-      if (kpiType === "Monetary") {
+      if (kpiType === "Metric") {
         departmentMetrics.monetaryValue += task.monetaryValue || 0;
         departmentMetrics.monetaryValueAchieved += task.monetaryValueAchieved || 0;
       } else if (kpiType === "Percentage") {
@@ -718,6 +747,9 @@ const departmentGraph = asyncHandler(async (req, res) => {
 });
 
 const individualDepartmentGraph = asyncHandler(async (req, res) => {
+  // Retrieve all departments from the database, including branch information
+  const departments = await Department.find({}).select("name branch");
+
   // Find tasks and populate the team and kpi fields
   let queryResult = Task.find({ "kpi.id": { $ne: null } })  // Only tasks with an assigned KPI
     .populate({
@@ -765,7 +797,7 @@ const individualDepartmentGraph = asyncHandler(async (req, res) => {
       const kpiEntry = departmentKPIs.get(kpiId);
 
       // Aggregate metrics based on KPI type
-      if (kpiType === "Monetary") {
+      if (kpiType === "Metric") {
         kpiEntry.monetaryValue += task.monetaryValue || 0;
         kpiEntry.monetaryValueAchieved += task.monetaryValueAchieved || 0;
       } else if (kpiType === "Percentage") {
@@ -775,17 +807,29 @@ const individualDepartmentGraph = asyncHandler(async (req, res) => {
     }
   }
 
-  // Convert the nested maps to a more frontend-friendly structure
-  const departmentsData = Array.from(departmentMap).map(([department, kpis]) => ({
-    department,
-    kpis: Array.from(kpis.values()),
-  }));
+  // Ensure all departments are included in the final result, even if they have no data
+  const departmentsData = departments.map((department) => {
+    const kpis = departmentMap.has(department.name)
+      ? Array.from(departmentMap.get(department.name).values())
+      : [];
+
+    return {
+      department: department.name,
+      branch: department.branch, // Add the branch field to each department
+      kpis,
+    };
+  });
 
   res.status(200).json({
     status: true,
     departments: departmentsData,
   });
 });
+
+
+
+
+
 export {
   createSubTask,
   createTask,

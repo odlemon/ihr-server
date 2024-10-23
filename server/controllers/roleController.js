@@ -39,6 +39,43 @@ const createRole = asyncHandler(async (req, res) => {
   }
 });
 
+const duplicateRole = asyncHandler(async (req, res) => {
+  try {
+    const { name, permissions, description, branchId } = req.body;
+
+    const branch = await Branch.findById(branchId);
+    if (!branch) {
+      console.error("Branch not found");
+      return res.status(400).json({ status: false, message: "Branch not found" });
+    }
+
+    // Check if a role with the same name exists in the same branch
+    const roleExists = await Role.findOne({ name, branch: branchId });
+
+    if (roleExists) {
+      console.error("Role already exists in this branch");
+      return res.status(400).json({ status: false, message: "Role already exists in this branch" });
+    }
+
+    const role = await Role.create({
+      name,
+      permissions,
+      description,
+      branch: branchId,
+    });
+
+    if (role) {
+      res.status(201).json(role);
+    } else {
+      console.error("Invalid role data");
+      return res.status(400).json({ status: false, message: "Invalid role data" });
+    }
+  } catch (error) {
+    console.error("Error creating role:", error);
+    return res.status(500).json({ status: false, message: "Server error" });
+  }
+});
+
 
 const getRoles = asyncHandler(async (req, res) => {
   const { branchId } = req.body;
@@ -344,6 +381,7 @@ export {
   createBulkRoles,
   getAllBranchIds,
   createRole,
+  duplicateRole,
   getRoles,
   getRoleById,
   updateRole,

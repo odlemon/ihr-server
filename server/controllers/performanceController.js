@@ -1,14 +1,31 @@
 import asyncHandler from "express-async-handler";
 import Task from "../models/taskModel.js";
+import Kpi from "../models/kpiModel.js";
 
 const evaluatePerformance = asyncHandler(async (req, res) => {
   try {
     const { userId } = req.body;
 
+    // First, let's log all KPIs in the system
+    const allKpis = await Kpi.find({});
+    console.log('\n=== All KPIs in System ===');
+    allKpis.forEach(kpi => {
+      console.log({
+        KPI_ID: kpi._id,
+        Name: kpi.name,
+        Type: kpi.type,
+        WeightValue: kpi.weightValue ? parseFloat(kpi.weightValue.$numberDecimal) : 0,
+        Branch: kpi.branch,
+        Created_At: kpi.createdAt,
+        Updated_At: kpi.updatedAt
+      });
+    });
+    console.log('========================\n');
+
     const tasks = await Task.find({
-      team: userId, 
+      team: userId,
       isTrashed: false,
-    }).populate('team', 'name').populate('kpi', 'name');
+    }).populate('team', 'name').populate('kpi', 'name type weightValue branch'); // Updated populate fields
 
     if (tasks.length === 0) {
       return res.status(200).json({ status: false, message: "User has no tasks assigned." });
@@ -16,10 +33,10 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
 
     const statusCounts = {
       completed: 0,
-      'in progress': 0,
+      inProgress: 0,
       started: 0,
       todo: 0,
-      delayed: 0
+      overdue: 0
     };
 
     tasks.forEach(task => {
@@ -35,12 +52,46 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
 
     const totalTasks = tasks.length;
     let totalWeightedScore = 0;
-    Object.keys(statusCounts).forEach(status => {
-      const weight = getStatusWeight(status);
-      totalWeightedScore += statusCounts[status] * weight;
-    });
 
-    const overallRating = totalWeightedScore / totalTasks;
+    console.log('\n=== Task-KPI Relationships ===');
+    for (const task of tasks) {
+      const statusScore = getStatusScore(task.stage);
+      const priorityMultiplier = getPriorityMultiplier(task.priority);
+
+      // Get KPI weight from weightValue.$numberDecimal
+      const kpiWeight = task.kpi?.weightValue?.$numberDecimal ? parseFloat(task.kpi.weightValue.$numberDecimal) : 0;
+
+      const objectiveValue = statusScore * priorityMultiplier;
+      const finalPoints = objectiveValue * (1 + kpiWeight);
+
+      console.log(`\nTask Details:`);
+      console.log({
+        Task_ID: task._id,
+        Title: task.title,
+        Stage: task.stage,
+        Priority: task.priority,
+        KPI_Details: task.kpi ? {
+          KPI_ID: task.kpi._id,
+          Name: task.kpi.name,
+          Type: task.kpi.type,
+          WeightValue: kpiWeight,
+          Branch: task.kpi.branch
+        } : 'No KPI assigned',
+        Calculations: {
+          Status_Score: statusScore,
+          Priority_Multiplier: priorityMultiplier,
+          KPI_Weight: kpiWeight,
+          Objective_Value: objectiveValue,
+          Final_Points: finalPoints
+        }
+      });
+
+      totalWeightedScore += finalPoints;
+    }
+    console.log('===========================\n');
+
+    const overallRating = totalTasks > 0 ? totalWeightedScore / totalTasks : 0;
+
     const performanceRating = {
       user: userPerformance.name,
       overallRating: overallRating.toFixed(2),
@@ -50,10 +101,17 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
         _id: task._id,
         name: task.title,
         kpiName: task.kpi ? task.kpi.name : 'N/A',
+        kpiType: task.kpi ? task.kpi.type : 'N/A',
         created_at: task.created_at,
         stage: task.stage,
+        priority: task.priority,
+        kpiWeight: task.kpi?.weightValue?.$numberDecimal ? parseFloat(task.kpi.weightValue.$numberDecimal) : 0,
       })),
     };
+
+    console.log('\n=== Final Performance Summary ===');
+    console.log(performanceRating);
+    console.log('===============================\n');
 
     res.status(200).json({ status: true, performance: performanceRating });
   } catch (error) {
@@ -62,20 +120,33 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
   }
 });
 
-function getStatusWeight(status) {
+function getStatusScore(status) {
   switch (status) {
     case 'completed':
-      return 5;
-    case 'in progress':
-      return 4;
-    case 'started':
-      return 3;
-    case 'todo':
-      return 2;
-    case 'delayed':
       return 1;
+    case 'inProgress':
+      return 0.5;
+    case 'started':
+      return 0;
+    case 'todo':
+      return 0;
+    case 'overdue':
+      return -1;
     default:
       return 0;
+  }
+}
+
+function getPriorityMultiplier(priority) {
+  switch (priority) {
+    case 'high':
+      return 5;
+    case 'medium':
+      return 2;
+    case 'low':
+      return 1;
+    default:
+      return 1;
   }
 }
 

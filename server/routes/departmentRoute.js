@@ -16,7 +16,7 @@ const router = express.Router();
 
 router.post("/create", protectRoute, checkPermission("can create departments"), createDepartment);
 router.post("/get", protectRoute, checkPermission("can view departments"), getDepartments);
-router.get("/all", protectRoute, checkPermission("can view all departments"), getAllDepartments);
+router.get("/all", protectRoute, getAllDepartments);
 router.get("/detail/:id", protectRoute, checkPermission("can view department details"), getDepartmentById);
 router.put("/update/:id", protectRoute, checkPermission("can update departments"), updateDepartment);
 router.delete("/delete/:id", protectRoute, checkPermission("can delete departments"), deleteDepartment);

@@ -7,9 +7,10 @@ const kpiSchema = new Schema(
     type: {
       type: String,
       required: true,
-      enum: ['Monetary', 'Percentage'],
+      enum: ['Metric', 'Percentage'],
     },
     branch: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
+    weightValue: { type: Schema.Types.Decimal128, required: true }, // Add this line for weightValue
   },
   { timestamps: true }
 );

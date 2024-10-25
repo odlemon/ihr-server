@@ -11,6 +11,10 @@ import {
   registerUser,
   updateUserProfile,
   updateComment,
+  updateFeedback,
+  deleteSnapshot,
+  getFeedback,
+  sendNotification,
 } from "../controllers/userController.js";
 import { isAdminRoute, protectRoute } from "../middleware/authMiddleware.js";
 import { checkPermission } from "../middleware/checkPermission.js";
@@ -26,6 +30,10 @@ router.get("/notifications", protectRoute, getNotificationsList);
 
 
 router.put("/comment", protectRoute, updateComment);
+router.put("/feedback", protectRoute, updateFeedback);
+router.put("/snapshot", protectRoute, deleteSnapshot);
+router.put("/get/feedback", protectRoute, getFeedback);
+router.put("/notify", protectRoute, sendNotification);
 
 router.put("/profile", protectRoute, updateUserProfile);
 router.put("/read-noti", protectRoute, markNotificationRead);

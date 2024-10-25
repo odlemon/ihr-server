@@ -59,7 +59,8 @@ const taskSchema = new Schema(
       type: { type: String, enum: ["Metric", "Percentage"] },
       
     },
-    created_at: { type: Date, default: Date.now }
+    created_at: { type: Date, default: Date.now },
+    updated_at: {type: Date}
   },
   { timestamps: true }
 );

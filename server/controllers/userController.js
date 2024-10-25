@@ -7,6 +7,7 @@ import mongoose from "mongoose";
 import Role from "../models/roleModel.js";
 import Branch from "../models/branchModel.js";
 
+
 function generateRandomPassword(length = 10) {
   return crypto.randomBytes(Math.ceil(length / 2))
     .toString('hex')
@@ -151,7 +152,7 @@ const getTeamList = asyncHandler(async (req, res) => {
     query = { ...query, ...searchQuery };
   }
 
-  const users = await User.find(query).select("name title role email isActive department branch comment");
+  const users = await User.find(query).select("name title role email isActive department branch comment feedbackComment");
 
   res.status(201).json(users);
 });
@@ -280,6 +281,175 @@ const updateComment = asyncHandler(async (req, res) => {
 });
 
 
+const updateFeedback = asyncHandler(async (req, res) => {
+  try {
+    const { _id, feedback } = req.body; // Get the ID and feedback comment from the request body
+
+    // Log the incoming request body for debugging
+    console.log("Request Body:", req.body);
+
+    const user = await User.findById(_id);
+
+    if (user) {
+      // Update the feedback comment field
+      user.feedbackComment = feedback || user.feedbackComment;
+
+      const updatedUser = await user.save();
+
+      // Remove password from the response
+      updatedUser.password = undefined;
+
+      const responseData = {
+        status: true,
+        message: "Comment Updated Successfully.",
+        user: updatedUser,
+      };
+
+      // Log the response data before sending it
+      console.log("Response Data:", responseData);
+
+      res.status(200).json(responseData);
+    } else {
+      const errorResponse = { status: false, message: "User not found." };
+
+      // Log the response data for a 404 case
+      console.log("Response Data:", errorResponse);
+
+      res.status(404).json(errorResponse);
+    }
+  } catch (error) {
+    // Log the error details, including the request body for context
+    console.error("Error updating comment:", {
+      message: error.message,
+      stack: error.stack,
+      requestBody: req.body,
+    });
+
+    const errorResponse = {
+      status: false,
+      message: "An error occurred while updating the comment.",
+      error: error.message,
+    };
+
+    // Log the error response data
+    console.log("Error Response Data:", errorResponse);
+
+    res.status(500).json(errorResponse);
+  }
+});
+
+
+
+const deleteSnapshot = asyncHandler(async (req, res) => {
+  try {
+    
+    const { _id } = req.body; // Get the ID and comment directly from the request body
+
+    const user = await User.findById(_id);
+
+    if (user) {
+      // Update the comment field
+      user.feedbackComment = "";
+      user.comment = "";
+
+      const updatedUser = await user.save();
+
+      // Remove password from the response
+      updatedUser.password = undefined;
+
+      res.status(200).json({
+        status: true,
+        message: "Comment Updated Successfully.",
+        user: updatedUser,
+      });
+    } else {
+      res.status(404).json({ status: false, message: "User not found." });
+    }
+  } catch (error) {
+    console.error("Error updating comment:", {
+      message: error.message,
+      stack: error.stack,
+      requestBody: req.body,
+    });
+
+    res.status(500).json({
+      status: false,
+      message: "An error occurred while updating the comment.",
+      error: error.message,
+    });
+  }
+});
+
+const getFeedback = asyncHandler(async (req, res) => {
+  try {
+    const { _id } = req.body; // Get the ID directly from the request body
+
+    const user = await User.findById(_id);
+
+    if (user) {
+      // Return the feedbackComment without making any updates
+      res.status(200).json({
+        status: true,
+        message: "User found.",
+        feedbackComment: user.feedbackComment,
+        comment: user.comment, // Return the feedbackComment
+      });
+    } else {
+      res.status(404).json({ status: false, message: "User not found." });
+    }
+  } catch (error) {
+    console.error("Error retrieving comment:", {
+      message: error.message,
+      stack: error.stack,
+      requestBody: req.body,
+    });
+
+    res.status(500).json({
+      status: false,
+      message: "An error occurred while retrieving the comment.",
+      error: error.message,
+    });
+  }
+});
+
+
+const sendNotification = asyncHandler(async (req, res) => {
+  try {
+    const { _id } = req.body; // Get the ID directly from the request body
+
+    const user = await User.findById(_id);
+
+    if (user) {
+      // Create an array with the user ID as the only member
+      const team = [user._id];
+
+      await Notice.create({
+        team, // Use the team array that contains the user ID
+        text: "Your performance report has been downloaded by your Manager",
+      });
+
+      res.status(200).json({
+        status: true,
+        message: "Notification has been sent to the employee.",
+      });
+    } else {
+      res.status(404).json({ status: false, message: "User not found." });
+    }
+  } catch (error) {
+    console.error("Failed to send notification", {
+      message: error.message,
+      stack: error.stack,
+      requestBody: req.body,
+    });
+
+    res.status(500).json({
+      status: false,
+      message: "An error occurred while sending the notification.",
+      error: error.message,
+    });
+  }
+});
+
 
 
 const activateUserProfile = asyncHandler(async (req, res) => {
@@ -353,4 +523,8 @@ export {
   getNotificationsList,
   markNotificationRead,
   updateComment,
+  updateFeedback,
+  deleteSnapshot,
+  getFeedback,
+  sendNotification,
 };

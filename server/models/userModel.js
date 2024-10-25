@@ -15,6 +15,7 @@ const userSchema = new Schema(
     isActive: { type: Boolean, default: true },
     branch: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
     comment: { type: String, default: "" },
+    feedbackComment: { type: String, default: "" },
   },
   { timestamps: true }
 );

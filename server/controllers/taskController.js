@@ -367,7 +367,7 @@ const getTask = asyncHandler(async (req, res) => {
 const postTaskActivity = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { userId } = req.user;
-  const { type, activity, monetaryValueAchieved, percentValueAchieved } = req.body;
+  const { type, activity, monetaryValueAchieved, percentValueAchieved, updated_at } = req.body;
 
   try {
     const task = await Task.findById(id);
@@ -379,6 +379,7 @@ const postTaskActivity = asyncHandler(async (req, res) => {
     const data = {
       type,
       activity,
+      updated_at,
       by: userId,
     };
     task.activities.push(data);

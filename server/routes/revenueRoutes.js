@@ -9,15 +9,17 @@ import {
 } from "../controllers/revenueController.js";
 import { protectRoute } from "../middleware/authMiddleware.js";
 import { checkPermission } from "../middleware/checkPermission.js";
+import { disableCaching } from "../middleware/disableCaching.js";
 
 const router = express.Router();
 
-router.post("/create", protectRoute, createRevenue);
+router.post("/create", protectRoute, disableCaching, createRevenue);
 // router.post("/get", protectRoute, checkPermission("can view revenues"), getRevenues);
- router.get("/all", protectRoute,  getRevenues);
-// router.get("/detail/:id", protectRoute, checkPermission("can view revenue details"), getRevenueById);
-router.put("/update/:id", protectRoute, updateRevenueBranch);
-router.delete("/delete/:id", protectRoute, deleteRevenue);
-router.post("/branch-revenue", protectRoute, createBranchRevenue);
+
+
+router.get("/all", protectRoute, disableCaching,  getRevenues);
+router.put("/update/:id", protectRoute, disableCaching, updateRevenueBranch);
+router.delete("/delete/:id", protectRoute, disableCaching, deleteRevenue);
+router.post("/branch-revenue", protectRoute, disableCaching, createBranchRevenue);
 
 export default router;

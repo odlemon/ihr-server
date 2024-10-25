@@ -95,6 +95,8 @@ const getRevenues = asyncHandler(async (req, res) => {
       return res.status(404).json({ status: false, message: "No revenues found" });
     }
 
+    console.log("Revenues Data:", revenues); // Log the revenues data
+
     res.status(200).json({
       status: true,
       message: "Revenues retrieved successfully",
@@ -110,6 +112,7 @@ const getRevenues = asyncHandler(async (req, res) => {
     });
   }
 });
+
 
 
 // Get a single revenue entry by ID

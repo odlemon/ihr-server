@@ -364,10 +364,11 @@ const getTask = asyncHandler(async (req, res) => {
     throw new Error("Failed to fetch task", error);
   }
 });
+
 const postTaskActivity = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const { userId } = req.user;
-  const { type, activity, monetaryValueAchieved, percentValueAchieved, updated_at } = req.body;
+  const { type, activity, monetaryValueAchieved, percentValueAchieved } = req.body;
 
   try {
     const task = await Task.findById(id);
@@ -376,14 +377,29 @@ const postTaskActivity = asyncHandler(async (req, res) => {
       return res.status(404).json({ status: false, message: "Task not found" });
     }
 
+    // Prepare the data object for the new activity
     const data = {
       type,
       activity,
-      updated_at,
+      date: new Date(), // Ensure date is set to current date
       by: userId,
+      collectedMonetary: 0, // Initialize the new field
+      collectedPercent: 0,    // Initialize the new field
     };
+
+    // Assign collected monetary or percentage based on KPI type
+    if (task.kpi?.type === "Metric" && monetaryValueAchieved) {
+      data.collectedMonetary = monetaryValueAchieved;
+      task.monetaryValueAchieved = (task.monetaryValueAchieved || 0) + monetaryValueAchieved; // Update achieved monetary value
+    } else if (task.kpi?.type === "Percentage" && percentValueAchieved) {
+      data.collectedPercent = percentValueAchieved;
+      task.percentValueAchieved = (task.percentValueAchieved || 0) + percentValueAchieved; // Update achieved percentage value
+    }
+
+    // Push the activity data to the task's activities array
     task.activities.push(data);
 
+    // Update the task stage based on activity type
     if (type === "completed") {
       task.stage = "completed";
     } else if (type === "in progress") {
@@ -392,13 +408,7 @@ const postTaskActivity = asyncHandler(async (req, res) => {
       task.stage = "todo";
     }
 
-    if (task.kpi?.type === "Metric" && monetaryValueAchieved) {
-      task.monetaryValueAchieved = (task.monetaryValueAchieved || 0) + monetaryValueAchieved;
-    } else if (task.kpi?.type === "Percentage" && percentValueAchieved) {
-      task.percentValueAchieved = (task.percentValueAchieved || 0) + percentValueAchieved;
-    }
-
-    await task.save();
+    await task.save(); // Save the updated task document
 
     res.status(200).json({ status: true, message: "Activity posted successfully." });
   } catch (error) {

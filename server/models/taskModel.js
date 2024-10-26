@@ -37,6 +37,8 @@ const taskSchema = new Schema(
         activity: String,
         date: { type: Date, default: new Date() },
         by: { type: Schema.Types.ObjectId, ref: "User" },
+        collectedMonetary: { type: Number, default: 0 }, // New field added
+        collectedPercent: { type: Number, default: 0 },  // New field added
       },
     ],
     subTasks: [

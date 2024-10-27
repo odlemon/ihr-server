@@ -10,12 +10,43 @@ const createKPI = asyncHandler(async (req, res) => {
     return res.status(400).json({ status: false, message: "Branch not found" });
   }
 
-  const kpiExists = await KPI.findOne({ name });
+  const kpiExists = await KPI.findOne({ name, branch: branchId });
 
   if (kpiExists) {
     return res
       .status(400)
       .json({ status: false, message: "KPI already exists" });
+  }
+
+  const kpi = await KPI.create({
+    name,
+    type,
+    branch: branchId,
+    weightValue, 
+  });
+
+  if (kpi) {
+    res.status(201).json(kpi);
+  } else {
+    return res.status(400).json({ status: false, message: "Invalid KPI data" });
+  }
+});
+
+
+const duplicateKPI = asyncHandler(async (req, res) => {
+  const { name, type, branchId, weightValue } = req.body; // Extract weightValue from request body
+
+  const branch = await Branch.findById(branchId);
+  if (!branch) {
+    return res.status(400).json({ status: false, message: "Branch not found" });
+  }
+
+  const kpiExists = await KPI.findOne({ name, branch: branchId });
+
+  if (kpiExists) {
+    return res
+      .status(400)
+      .json({ status: false, message: "KPI already exists on the selected branch" });
   }
 
   // Create the KPI document with the weightValue included
@@ -118,4 +149,5 @@ export {
   getKPIById,
   updateKPI,
   deleteKPI,
+  duplicateKPI,
 };

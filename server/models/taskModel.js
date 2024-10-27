@@ -32,13 +32,13 @@ const taskSchema = new Schema(
         type: {
           type: String,
           default: "assigned",
-          enum: ["todo", "in progress", "completed"],
+          enum: ["todo", "in progress", "completed", "overdue"],
         },
         activity: String,
         date: { type: Date, default: new Date() },
         by: { type: Schema.Types.ObjectId, ref: "User" },
-        collectedMonetary: { type: Number, default: 0 }, // New field added
-        collectedPercent: { type: Number, default: 0 },  // New field added
+        collectedMonetary: { type: Number, default: 0 },
+        collectedPercent: { type: Number, default: 0 },  
       },
     ],
     subTasks: [

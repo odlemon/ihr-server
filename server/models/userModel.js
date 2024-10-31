@@ -14,8 +14,9 @@ const userSchema = new Schema(
     tasks: [{ type: Schema.Types.ObjectId, ref: "Task" }],
     isActive: { type: Boolean, default: true },
     branch: { type: Schema.Types.ObjectId, ref: "Branch", required: true },
-    comment: { type: String, default: "" },
-    feedbackComment: { type: String, default: "" },
+    comment: { type: String, default: "" }, //Performance Evaluatiton
+    developmentalAreas: { type: String, default: "" }, 
+    feedbackComment: { type: String, default: "" }, //employee comment  
   },
   { timestamps: true }
 );

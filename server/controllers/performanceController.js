@@ -6,7 +6,6 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
   try {
     const { userId } = req.body;
 
-    // First, let's log all KPIs in the system
     const allKpis = await Kpi.find({});
     console.log('\n=== All KPIs in System ===');
     allKpis.forEach(kpi => {
@@ -25,7 +24,7 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
     const tasks = await Task.find({
       team: userId,
       isTrashed: false,
-    }).populate('team', 'name').populate('kpi', 'name type weightValue branch'); // Updated populate fields
+    }).populate('team', 'name').populate('kpi', 'name type weightValue branch');
 
     if (tasks.length === 0) {
       return res.status(200).json({ status: false, message: "User has no tasks assigned." });
@@ -58,33 +57,32 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
       const statusScore = getStatusScore(task.stage);
       const priorityMultiplier = getPriorityMultiplier(task.priority);
 
-      // Get KPI weight from weightValue.$numberDecimal
       const kpiWeight = task.kpi?.weightValue?.$numberDecimal ? parseFloat(task.kpi.weightValue.$numberDecimal) : 0;
 
       const objectiveValue = statusScore * priorityMultiplier;
       const finalPoints = objectiveValue * (1 + kpiWeight);
 
-      console.log(`\nTask Details:`);
-      console.log({
-        Task_ID: task._id,
-        Title: task.title,
-        Stage: task.stage,
-        Priority: task.priority,
-        KPI_Details: task.kpi ? {
-          KPI_ID: task.kpi._id,
-          Name: task.kpi.name,
-          Type: task.kpi.type,
-          WeightValue: kpiWeight,
-          Branch: task.kpi.branch
-        } : 'No KPI assigned',
-        Calculations: {
-          Status_Score: statusScore,
-          Priority_Multiplier: priorityMultiplier,
-          KPI_Weight: kpiWeight,
-          Objective_Value: objectiveValue,
-          Final_Points: finalPoints
-        }
-      });
+      // console.log(`\nTask Details:`);
+      // console.log({
+      //   Task_ID: task._id,
+      //   Title: task.title,
+      //   Stage: task.stage,
+      //   Priority: task.priority,
+      //   KPI_Details: task.kpi ? {
+      //     KPI_ID: task.kpi._id,
+      //     Name: task.kpi.name,
+      //     Type: task.kpi.type,
+      //     WeightValue: kpiWeight,
+      //     Branch: task.kpi.branch
+      //   } : 'No KPI assigned',
+      //   Calculations: {
+      //     Status_Score: statusScore,
+      //     Priority_Multiplier: priorityMultiplier,
+      //     KPI_Weight: kpiWeight,
+      //     Objective_Value: objectiveValue,
+      //     Final_Points: finalPoints
+      //   }
+      // });
 
       totalWeightedScore += finalPoints;
     }
@@ -97,17 +95,65 @@ const evaluatePerformance = asyncHandler(async (req, res) => {
       overallRating: overallRating.toFixed(2),
       statusCounts,
       totalTasks,
-      tasks: tasks.map(task => ({
-        _id: task._id,
-        name: task.title,
-        kpiName: task.kpi ? task.kpi.name : 'N/A',
-        kpiType: task.kpi ? task.kpi.type : 'N/A',
-        created_at: task.created_at,
-        stage: task.stage,
-        priority: task.priority,
-        kpiWeight: task.kpi?.weightValue?.$numberDecimal ? parseFloat(task.kpi.weightValue.$numberDecimal) : 0,
-      })),
+      tasks: tasks.map(task => {
+        let rating = 'N/A';
+        let percentage = 'N/A'
+        let monetaryValue = parseFloat(task.monetaryValue).toFixed(2);
+        let monetaryValueAchieved = parseFloat(task.monetaryValueAchieved).toFixed(2);
+        let percentValue = parseFloat(task.percentValue || 0).toFixed(2);
+        let percentValueAchieved = parseFloat(task.percentValueAchieved || 0).toFixed(2);
+    
+        if (task.kpi) {
+          if (task.kpi.type === "Metric" && monetaryValue && monetaryValueAchieved) {
+            rating = ((monetaryValueAchieved / monetaryValue) * 100).toFixed(2);
+          } else if (task.kpi.type === "Percentage") {
+            rating = 'x';
+          }
+        }
+
+        if (task.kpi) {
+          if (task.kpi.type === "Percentage") {
+            if (percentValue === 0 && percentValueAchieved === 0) {
+              percentage = "0";
+            } else if (percentValueAchieved !== 0) {
+              percentage = (percentValue / percentValueAchieved).toFixed(2);
+            } else {
+              percentage = 0; // Handles cases where percentValueAchieved is zero but percentValue is not
+            }
+          }
+        }
+        
+        
+        
+  
+    
+        return {
+          _id: task._id,
+          name: task.title,
+          kpiName: task.kpi ? task.kpi.name : 'N/A',
+          kpiType: task.kpi ? task.kpi.type : 'N/A',
+          created_at: task.created_at,
+          stage: task.stage,
+          priority: task.priority,
+          kpiWeight: task.kpi?.weightValue?.$numberDecimal ? parseFloat(task.kpi.weightValue.$numberDecimal).toFixed(2) : 0,
+          rating,
+          percentage,
+        };
+      }),
     };
+
+    performanceRating.totalRating = performanceRating.tasks
+  .filter(task => task.kpiType === 'Metric' && task.rating !== 'N/A')
+  .reduce((sum, task) => sum + parseFloat(task.rating), 0)
+  .toFixed(2);
+
+  performanceRating.totalPercentage = performanceRating.tasks
+  .filter(task => task.kpiType === 'Percentage' && task.percentage !== 'N/A')
+  .reduce((sum, task) => sum + parseFloat(task.percentage), 0)
+  .toFixed(2);
+
+console.log('Total Rating for Metric tasks:', performanceRating.totalRating);
+    
 
     console.log('\n=== Final Performance Summary ===');
     console.log(performanceRating);

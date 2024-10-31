@@ -152,7 +152,7 @@ const getTeamList = asyncHandler(async (req, res) => {
     query = { ...query, ...searchQuery };
   }
 
-  const users = await User.find(query).select("name title role email isActive department branch comment feedbackComment");
+  const users = await User.find(query).select("name title role email isActive department branch comment feedbackComment developmentalAreas");
 
   res.status(201).json(users);
 });
@@ -244,13 +244,14 @@ const updateComment = asyncHandler(async (req, res) => {
   try {
     console.log("Request Body:", req.body);
     
-    const { _id, comment } = req.body; // Get the ID and comment directly from the request body
+    const { _id, comment, developmentalAreas } = req.body; // Get the ID and comment directly from the request body
 
     const user = await User.findById(_id);
 
     if (user) {
       // Update the comment field
       user.comment = comment || user.comment;
+      user.developmentalAreas = developmentalAreas || user.developmentalAreas;
 
       const updatedUser = await user.save();
 
@@ -351,6 +352,7 @@ const deleteSnapshot = asyncHandler(async (req, res) => {
       // Update the comment field
       user.feedbackComment = "";
       user.comment = "";
+      user.developmentalAreas = "";
 
       const updatedUser = await user.save();
 
@@ -392,6 +394,7 @@ const getFeedback = asyncHandler(async (req, res) => {
         status: true,
         message: "User found.",
         feedbackComment: user.feedbackComment,
+        developmentalAreas: user.developmentalAreas,
         comment: user.comment, // Return the feedbackComment
       });
     } else {

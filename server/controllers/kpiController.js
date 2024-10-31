@@ -3,7 +3,7 @@ import KPI from "../models/kpiModel.js";
 import Branch from "../models/branchModel.js";
 
 const createKPI = asyncHandler(async (req, res) => {
-  const { name, type, branchId, weightValue } = req.body; // Extract weightValue from request body
+  const { name, type, branchId, weightValue } = req.body; 
 
   const branch = await Branch.findById(branchId);
   if (!branch) {
@@ -49,7 +49,6 @@ const duplicateKPI = asyncHandler(async (req, res) => {
       .json({ status: false, message: "KPI already exists on the selected branch" });
   }
 
-  // Create the KPI document with the weightValue included
   const kpi = await KPI.create({
     name,
     type,

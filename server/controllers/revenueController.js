@@ -145,9 +145,14 @@ const getRevenueById = asyncHandler(async (req, res) => {
 
 
 const updateRevenueBranch = asyncHandler(async (req, res) => {
- 
-  const { revenueId,branchId, target, achieved } = req.body; // Extract branchId, target, and achieved from the body
+  const { revenueId, branchId, target, achieved, status, requestId } = req.body; // Extract relevant fields from the body
+
   try {
+    // Validate input
+    if (typeof revenueId !== 'string' || typeof branchId !== 'string') {
+      return res.status(400).json({ status: false, message: "Invalid revenueId or branchId" });
+    }
+
     // Find the revenue by ID
     const revenue = await Revenue.findById(revenueId);
     if (!revenue) {
@@ -156,33 +161,49 @@ const updateRevenueBranch = asyncHandler(async (req, res) => {
 
     // Find the specific branch in the revenue's targetBranches array
     const branchToUpdate = revenue.targetBranches.find(b => b.id === branchId);
-
     if (!branchToUpdate) {
       return res.status(404).json({ status: false, message: "Branch not found in the revenue" });
     }
 
-    // Update the branch's target if provided
-    if (typeof target === 'number') {
-      branchToUpdate.target = target;
-    }
+    // Handle request based on status
+    if (status === 'accepted') {
+      // Update the branch's target if provided
+      if (typeof target === 'number') {
+        branchToUpdate.target = target;
+      }
 
-    // Update the branch's achieved and log history if provided
-    if (typeof achieved === 'number') {
-      branchToUpdate.achieved = achieved;
-      branchToUpdate.achievedHistory.push({
-        value: achieved,
-        date: new Date(),
+      // Update the branch's achieved and log history if provided
+      if (typeof achieved === 'number') {
+        branchToUpdate.achieved = achieved;
+        branchToUpdate.achievedHistory.push({
+          value: achieved,
+          date: new Date(),
+        });
+      }
+
+      // Save the updated revenue document
+      const updatedRevenue = await revenue.save();
+
+      // Delete the request after processing
+      await RequestProgress.deleteOne({ _id: requestId });
+
+      return res.status(200).json({
+        status: true,
+        message: "Branch updated successfully and request deleted",
+        revenue: updatedRevenue,
       });
+    } else if (status === 'rejected') {
+      // Delete the request without making changes
+      await RequestProgress.deleteOne({ _id: requestId });
+
+      return res.status(200).json({
+        status: true,
+        message: "Request rejected and deleted without changes",
+      });
+    } else {
+      return res.status(400).json({ status: false, message: "Invalid status" });
     }
 
-    // Save the updated revenue document
-    const updatedRevenue = await revenue.save();
-
-    res.status(200).json({
-      status: true,
-      message: "Branch updated successfully",
-      revenue: updatedRevenue,
-    });
   } catch (error) {
     console.error("Error updating branch:", error);
     res.status(500).json({
@@ -194,73 +215,34 @@ const updateRevenueBranch = asyncHandler(async (req, res) => {
 });
 
 
+
 const requestProgress = asyncHandler(async (req, res) => {
-  const { revenueId, branchId, target, achieved, userId } = req.body;
+  const { revenueId, branchId, target, achieved, userId, status } = req.body;
 
   try {
-    console.log("Starting requestProgress creation process...");
-    console.log("Request body:", req.body);
-
-    // Find the revenue by ID and include revenueName for targetName
-    console.log(`Searching for revenue with ID: ${revenueId}`);
+ 
     const revenue = await Revenue.findById(revenueId).select("revenueName targetBranches");
     if (!revenue) {
-      console.error(`Revenue with ID ${revenueId} not found`);
       return res.status(404).json({ status: false, message: "Revenue not found" });
     }
 
-    // Find the specific branch in the revenue's targetBranches array
-    console.log(`Searching for branch with ID ${branchId} in the revenue's targetBranches`);
-    const branchToUpdate = revenue.targetBranches.find(b => b.id === branchId);
-    if (!branchToUpdate) {
-      console.error(`Branch with ID ${branchId} not found in the revenue's targetBranches`);
-      return res.status(404).json({ status: false, message: "Branch not found in the revenue" });
-    }
-
-    // Update the branch's target if provided
-    if (typeof target === 'number') {
-      console.log(`Updating branch target to ${target}`);
-      branchToUpdate.target = target;
-    }
-
-    // Update the branch's achieved and log history if provided
-    if (typeof achieved === 'number') {
-      console.log(`Updating branch achieved to ${achieved} and adding to achieved history`);
-      branchToUpdate.achieved = achieved;
-      branchToUpdate.achievedHistory.push({
-        value: achieved,
-        date: new Date(),
-      });
-    }
-
-    // Save updates to the revenue document
-    console.log("Saving updated revenue document...");
-    await revenue.save();
-    console.log("Revenue document updated successfully");
-
-    // Find the user to get the name
-    console.log(`Fetching user with ID: ${userId}`);
+ 
     const user = await User.findById(userId);
     if (!user) {
       console.error(`User with ID ${userId} not found`);
       return res.status(404).json({ status: false, message: "User not found" });
     }
 
-    // Create a new RequestProgress record with the user's name and targetName from revenueName
-    console.log(`Creating new RequestProgress with user name: ${user.name} and targetName: ${revenue.revenueName}`);
     const newRequestProgress = new RequestProgress({
-      name: user.name,         // Set the name from the user document
+      name: user.name,        
       userId,
       revenueId,
       branchId,
       achieved,
-      targetName: revenue.revenueName  // Set targetName from revenueName field in the Revenue model
+      targetName: revenue.revenueName 
     });
 
-    // Save the new RequestProgress record to the database
-    console.log("Saving new RequestProgress record...");
     await newRequestProgress.save();
-    console.log("RequestProgress record created successfully");
 
     res.status(201).json({
       status: true,

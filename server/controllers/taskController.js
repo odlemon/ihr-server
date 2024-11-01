@@ -716,7 +716,7 @@ const departmentGraph = asyncHandler(async (req, res) => {
   for (const task of tasks) {
     if (task.kpi?.id?._id && task.team?.length > 0) {
       const kpiId = task.kpi.id._id.toString(); // Convert ObjectId to string for consistent comparison
-      const department = task.team[0]?.department;
+      const department = task.department;
 
       if (!department) continue; // Skip if department is not available
 

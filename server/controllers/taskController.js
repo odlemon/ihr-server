@@ -792,7 +792,7 @@ const individualDepartmentGraph = asyncHandler(async (req, res) => {
   // Retrieve all departments from the database, including branch information
   const departments = await Department.find({}).select("name branch");
 
-  // Find tasks and populate the team and kpi fields
+  // Find tasks and populate the team and KPI fields
   let queryResult = Task.find({ "kpi.id": { $ne: null } })  // Only tasks with an assigned KPI
     .populate({
       path: "team",
@@ -810,11 +810,11 @@ const individualDepartmentGraph = asyncHandler(async (req, res) => {
   const departmentMap = new Map();
 
   for (const task of tasks) {
-    if (task.kpi && task.kpi.id && task.team.length > 0) {
+    if (task.kpi && task.kpi.id) {
       const kpiId = task.kpi.id._id.toString();
       const kpiName = task.kpi.id.name;
       const kpiType = task.kpi.id.type;
-      const department = task.team[0]?.department;
+      const department = task.department; // Get department directly from the task
 
       // Initialize department entry if not already present
       if (!departmentMap.has(department)) {
@@ -867,6 +867,7 @@ const individualDepartmentGraph = asyncHandler(async (req, res) => {
     departments: departmentsData,
   });
 });
+
 
 export {
   createSubTask,

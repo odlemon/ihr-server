@@ -2,14 +2,14 @@ import asyncHandler from "express-async-handler";
 import Notice from "../models/notis.js";
 import Task from "../models/taskModel.js";
 import User from "../models/userModel.js";
-import KPI from "../models/kpiModel.js"; 
+import KPI from "../models/kpiModel.js";
 import Department from "../models/departmentModel.js"
 
 const createTask = asyncHandler(async (req, res) => {
   try {
     const { userId } = req.user;
-    const { 
-      title, team, stage, date, priority, assets, 
+    const {
+      title, team, stage, date, priority, assets,
       monetaryValue, percentValue, kpi,
       monetaryValueAchieved, percentValueAchieved, branch, department
     } = req.body;
@@ -75,9 +75,9 @@ const createTask = asyncHandler(async (req, res) => {
 
 const updateTask = asyncHandler(async (req, res) => {
   const { id } = req.params;
-  const { 
-    title, date, team, stage, priority, assets, 
-    monetaryValue, percentValue, kpi, 
+  const {
+    title, date, team, stage, priority, assets,
+    monetaryValue, percentValue, kpi,
     monetaryValueAchieved, percentValueAchieved
   } = req.body;
 
@@ -140,8 +140,7 @@ const duplicateTask = asyncHandler(async (req, res) => {
 
     text =
       text +
-      ` The task priority is set as ${
-        task.priority
+      ` The task priority is set as ${task.priority
       } priority, so check and act accordingly. The task date is ${new Date(
         task.date
       ).toDateString()}. Thank you!!!`;
@@ -199,8 +198,8 @@ const updateTaskStage = asyncHandler(async (req, res) => {
 
     await task.save();
 
-    res.status(200).json({ 
-      status: true, 
+    res.status(200).json({
+      status: true,
       message: "Task stage and achievements updated successfully.",
       task: {
         stage: task.stage,
@@ -494,20 +493,28 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
 
     const allTasks = isAdmin
       ? await Task.find({ isTrashed: false })
-          .populate({
-            path: "team",
-            select: "name role title email department",
-          })
-          .sort({ _id: -1 })
-      : await Task.find({
-          isTrashed: false,
-          team: { $all: [userId] },
+        .populate({
+          path: "team",
+          select: "name role title email department",
         })
-          .populate({
-            path: "team",
-            select: "name role title email department",
-          })
-          .sort({ _id: -1 });
+        .populate({
+          path: "kpi.id",
+          select: "name type",
+        })
+        .sort({ _id: -1 })
+      : await Task.find({
+        isTrashed: false,
+        team: { $all: [userId] },
+      })
+        .populate({
+          path: "team",
+          select: "name role title email department",
+        })
+        .populate({
+          path: "kpi.id",
+          select: "name type",
+        })
+        .sort({ _id: -1 });
 
     const tasksWithDepartments = allTasks.map((task) => {
       const departments = task.team.map((member) => member.department).filter(Boolean);
@@ -547,22 +554,28 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
         const department = member.department;
         if (!department) return;
 
-        const kpiName = task.kpi?.name || 'Uncategorized';
+        const kpiId = task.kpi?.id?._id?.toString() || 'uncategorized';
+        const kpiName = task.kpi?.id?.name || 'Uncategorized';
 
         if (!result[department]) {
           result[department] = {};
         }
-        if (!result[department][kpiName]) {
-          result[department][kpiName] = { completed: 0, overdue: 0, inProgress: 0 };
+        if (!result[department][kpiId]) {
+          result[department][kpiId] = { 
+            name: kpiName,
+            completed: 0, 
+            overdue: 0, 
+            inProgress: 0 
+          };
         }
 
         const statusLower = task.status?.toLowerCase();
         if (statusLower === 'complete' || task.stage === 'completed') {
-          result[department][kpiName].completed += 1;
+          result[department][kpiId].completed += 1;
         } else if (statusLower === 'in progress' || task.stage === 'in progress') {
-          result[department][kpiName].inProgress += 1;
+          result[department][kpiId].inProgress += 1;
         } else if (new Date(task.date) < new Date()) {
-          result[department][kpiName].overdue += 1;
+          result[department][kpiId].overdue += 1;
         }
       });
       return result;
@@ -572,14 +585,16 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
     const branchSummary = {};
 
     tasksWithDepartments.forEach((task) => {
-      const kpiName = task.kpi?.name || 'Uncategorized';
+      const kpiId = task.kpi?.id?._id?.toString() || 'uncategorized';
+      const kpiName = task.kpi?.id?.name || 'Uncategorized';
       const branch = task.branch || 'Unspecified';
       const monetaryValueAchieved = task.monetaryValueAchieved || 0;
       const percentValueAchieved = task.percentValueAchieved || 0;
-      const type = task.kpi?.type || 'Metric';
+      const type = task.kpi?.id?.type || 'Metric';
 
-      if (!kpiSummary[kpiName]) {
-        kpiSummary[kpiName] = {
+      if (!kpiSummary[kpiId]) {
+        kpiSummary[kpiId] = {
+          name: kpiName,
           totalMonetaryValue: 0,
           completedMonetaryValue: 0,
           revenueTarget: 0,
@@ -593,11 +608,11 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
         };
       }
       if (type === 'Metric') {
-        kpiSummary[kpiName].totalMonetaryValue += task.monetaryValue || 0;
-        kpiSummary[kpiName].completedMonetaryValue += monetaryValueAchieved;
+        kpiSummary[kpiId].totalMonetaryValue += task.monetaryValue || 0;
+        kpiSummary[kpiId].completedMonetaryValue += monetaryValueAchieved;
       } else if (type === 'Percentage') {
-        kpiSummary[kpiName].totalPercentageValue += task.percentValue || 0;
-        kpiSummary[kpiName].completedPercentageValue += percentValueAchieved;
+        kpiSummary[kpiId].totalPercentageValue += task.percentValue || 0;
+        kpiSummary[kpiId].completedPercentageValue += percentValueAchieved;
       }
 
       if (!branchSummary[branch]) {
@@ -682,36 +697,36 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
 
 const departmentGraph = asyncHandler(async (req, res) => {
   // Find tasks and populate the team and kpi fields
-  let queryResult = Task.find({ "kpi.id": { $ne: null } })  // Only tasks with an assigned KPI
+  let queryResult = Task.find({ "kpi.id": { $ne: null } })
     .populate({
       path: "team",
-      select: "name title email department", // Get user details along with department
+      select: "name title email department",
     })
     .populate({
       path: "kpi.id",
-      select: "name type", // Retrieve KPI details from the KPI model
+      select: "name type", 
     })
     .sort({ _id: -1 });
 
   const tasks = await queryResult;
 
-  // Group tasks by KPI and department
+  // Group tasks by KPI ID (not name) and department
   const kpiMap = new Map();
 
   for (const task of tasks) {
-    if (task.kpi && task.kpi.id && task.team.length > 0) {
-      const kpiId = task.kpi.id._id;
-      const kpiName = task.kpi.id.name;
-      const kpiType = task.kpi.id.type;
+    if (task.kpi?.id?._id && task.team?.length > 0) {
+      const kpiId = task.kpi.id._id.toString(); // Convert ObjectId to string for consistent comparison
       const department = task.team[0]?.department;
+
+      if (!department) continue; // Skip if department is not available
 
       // Initialize KPI entry if not already present
       if (!kpiMap.has(kpiId)) {
         kpiMap.set(kpiId, {
           id: kpiId,
-          name: kpiName,
-          type: kpiType,
-          departments: new Map(), // Map to aggregate metrics by department
+          name: task.kpi.id.name, // Store name but don't use it for grouping
+          type: task.kpi.id.type,
+          departments: new Map(),
         });
       }
 
@@ -724,38 +739,54 @@ const departmentGraph = asyncHandler(async (req, res) => {
           monetaryValueAchieved: 0,
           percentValue: 0,
           percentValueAchieved: 0,
+          taskCount: 0, // Added task count for better tracking
         });
       }
 
       const departmentMetrics = kpiEntry.departments.get(department);
+      departmentMetrics.taskCount++; // Increment task count
 
       // Aggregate metrics based on KPI type
-      if (kpiType === "Metric") {
-        departmentMetrics.monetaryValue += task.monetaryValue || 0;
-        departmentMetrics.monetaryValueAchieved += task.monetaryValueAchieved || 0;
-      } else if (kpiType === "Percentage") {
-        departmentMetrics.percentValue += task.percentValue || 0;
-        departmentMetrics.percentValueAchieved += task.percentValueAchieved || 0;
+      if (kpiEntry.type === "Metric") {
+        departmentMetrics.monetaryValue += Number(task.monetaryValue) || 0;
+        departmentMetrics.monetaryValueAchieved += Number(task.monetaryValueAchieved) || 0;
+      } else if (kpiEntry.type === "Percentage") {
+        departmentMetrics.percentValue += Number(task.percentValue) || 0;
+        departmentMetrics.percentValueAchieved += Number(task.percentValueAchieved) || 0;
       }
     }
   }
 
-  // Convert departments map to array for each KPI
+  // Convert maps to arrays and calculate averages for percentage KPIs
   const uniqueKPIs = Array.from(kpiMap.values()).map(kpi => ({
     id: kpi.id,
     name: kpi.name,
     type: kpi.type,
-    departments: Array.from(kpi.departments).map(([department, metrics]) => ({
-      department,
-      metrics,
-    })),
+    departments: Array.from(kpi.departments).map(([department, metrics]) => {
+      // If it's a percentage KPI, calculate the average
+      if (kpi.type === "Percentage" && metrics.taskCount > 0) {
+        metrics.percentValue = metrics.percentValue / metrics.taskCount;
+        metrics.percentValueAchieved = metrics.percentValueAchieved / metrics.taskCount;
+      }
+      
+      // Remove taskCount from final output if not needed
+      const { taskCount, ...finalMetrics } = metrics;
+      
+      return {
+        department,
+        metrics: finalMetrics,
+      };
+    }),
   }));
 
   res.status(200).json({
     status: true,
-    assignedKPIs: uniqueKPIs, // Return unique KPIs with metrics for each department
+    assignedKPIs: uniqueKPIs,
   });
 });
+
+
+
 
 const individualDepartmentGraph = asyncHandler(async (req, res) => {
   // Retrieve all departments from the database, including branch information
@@ -836,10 +867,6 @@ const individualDepartmentGraph = asyncHandler(async (req, res) => {
     departments: departmentsData,
   });
 });
-
-
-
-
 
 export {
   createSubTask,

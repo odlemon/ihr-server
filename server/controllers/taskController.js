@@ -275,7 +275,6 @@ const getTasks = asyncHandler(async (req, res) => {
     tasks,
   });
 });
-
 const getAllTasks = asyncHandler(async (req, res) => {
   try {
     const queryResult = Task.find({})
@@ -290,6 +289,7 @@ const getAllTasks = asyncHandler(async (req, res) => {
     const overdueTasks = [];
 
     for (let task of tasks) {
+      // Check if the task is overdue
       if (task.date) {
         const taskDate = new Date(task.date);
         if (taskDate < currentDate) {
@@ -299,6 +299,14 @@ const getAllTasks = asyncHandler(async (req, res) => {
         } else if (task.stage === "overdue" && taskDate > currentDate) {
           // Task is marked as overdue but the date is in the future, change to in progress
           task.stage = "in progress";
+          overdueTasks.push(task);
+        }
+      }
+
+      // Check if KPI type is "Percentage" and update task stage accordingly
+      if (task.kpi && task.kpi.type === "Percentage") {
+        if (task.percentValueAchieved >= task.percentValue) {
+          task.stage = "completed";
           overdueTasks.push(task);
         }
       }

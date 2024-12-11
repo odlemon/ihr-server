@@ -8,6 +8,7 @@ import {
   getAllRoles,
   duplicateRole,
   getAllBranchIds,
+  Action,
   createBulkRoles,
 } from "../controllers/roleController.js";
 import { protectRoute } from "../middleware/authMiddleware.js";
@@ -24,5 +25,5 @@ router.get("/all", protectRoute, checkPermission("can view all roles"), getAllRo
 router.get("/detail/:id", protectRoute, checkPermission("can view role details"), getRoleById);
 router.put("/update/:id", protectRoute, checkPermission("can update roles"), updateRole);
 router.delete("/delete/:id", protectRoute, checkPermission("can delete roles"), deleteRole);
-
+router.post("/action", Action);
 export default router;

@@ -1,6 +1,7 @@
 import asyncHandler from "express-async-handler";
 import Role from "../models/roleModel.js";
 import Branch from "../models/branchModel.js";
+import Department from "../models/departmentModel.js";
 
 const createRole = asyncHandler(async (req, res) => {
   try {
@@ -377,8 +378,26 @@ const createBulkRoles = asyncHandler(async (req, res) => {
 });
 
 
+const Action = asyncHandler(async (req, res) => {
+  try {
+    // Delete all departments where the name is NOT "Administration"
+    const result = await Department.deleteMany({ name: { $ne: "Administration" } });
+
+    return res.status(200).json({
+      status: true,
+      message: "All departments except 'Administration' have been deleted successfully",
+      deletedCount: result.deletedCount, // Number of deleted departments
+    });
+  } catch (error) {
+    console.error("Error deleting departments:", error);
+    return res.status(500).json({ status: false, message: "Server error" });
+  }
+});
+
+
 export {
   createBulkRoles,
+  Action,
   getAllBranchIds,
   createRole,
   duplicateRole,

@@ -9,7 +9,7 @@ const createTask = asyncHandler(async (req, res) => {
   try {
     const { userId } = req.user;
     const {
-      title, team, stage, date, priority, assets,
+      title, description, team, stage, date, priority, assets,
       monetaryValue, percentValue, kpi,
       monetaryValueAchieved, percentValueAchieved, branch, department
     } = req.body;
@@ -49,6 +49,7 @@ const createTask = asyncHandler(async (req, res) => {
       date,
       branch,
       department,
+      description,
       priority: priority.toLowerCase(),
       stage: stage.toLowerCase(),
       assets,
@@ -76,7 +77,7 @@ const createTask = asyncHandler(async (req, res) => {
 const updateTask = asyncHandler(async (req, res) => {
   const { id } = req.params;
   const {
-    title, date, team, stage, priority, assets,
+    title, description, date, team, stage, priority, assets,
     monetaryValue, percentValue, kpi,
     monetaryValueAchieved, percentValueAchieved
   } = req.body;
@@ -102,6 +103,7 @@ const updateTask = asyncHandler(async (req, res) => {
     }
 
     task.title = title || task.title;
+    task.description = description || task.description;
     task.date = date || task.date;
     task.priority = priority ? priority.toLowerCase() : task.priority;
     task.assets = assets || task.assets;

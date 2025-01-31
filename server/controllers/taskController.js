@@ -537,11 +537,63 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
       .limit(10)
       .sort({ _id: -1 });
 
-    const groupedTasks = tasksWithDepartments.reduce((result, task) => {
+    // Modified to group tasks by branch and stage
+    const tasksByBranch = tasksWithDepartments.reduce((result, task) => {
+      const branch = task.branch || 'Unspecified';
       const stage = task.stage;
-      result[stage] = (result[stage] || 0) + 1;
+      
+      if (!result[branch]) {
+        result[branch] = {
+          total: 0,
+          stages: {}
+        };
+      }
+      
+      result[branch].total += 1;
+      result[branch].stages[stage] = (result[branch].stages[stage] || 0) + 1;
+      
       return result;
     }, {});
+
+    // Modified to calculate total tasks by branch
+    const totalTasksByBranch = Object.entries(tasksByBranch).reduce((result, [branch, data]) => {
+      result[branch] = data.total;
+      return result;
+    }, {});
+
+    // Modified to calculate overdue tasks by branch
+    const overdueTasksByBranch = tasksWithDepartments.reduce((result, task) => {
+      const branch = task.branch || 'Unspecified';
+      const statusLower = task.status?.toLowerCase();
+      const isOverdue = (statusLower !== 'complete' && task.stage !== 'completed') && new Date(task.date) < new Date();
+      
+      if (isOverdue) {
+        result[branch] = (result[branch] || 0) + 1;
+      }
+      
+      return result;
+    }, {});
+
+    // Calculate totals
+    const totalTasks = {
+      byBranch: totalTasksByBranch,
+      total: tasksWithDepartments.length
+    };
+
+    const totalOverdueTasks = {
+      byBranch: overdueTasksByBranch,
+      total: Object.values(overdueTasksByBranch).reduce((sum, count) => sum + count, 0)
+    };
+
+    const tasks = {
+      byBranch: tasksByBranch,
+      total: Object.entries(tasksByBranch).reduce((result, [branch, data]) => {
+        Object.entries(data.stages).forEach(([stage, count]) => {
+          result[stage] = (result[stage] || 0) + count;
+        });
+        return result;
+      }, {})
+    };
 
     const graphData = Object.entries(
       tasksWithDepartments.reduce((result, task) => {
@@ -551,13 +603,7 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
       }, {})
     ).map(([name, total]) => ({ name, total }));
 
-    const totalTasks = tasksWithDepartments.length;
     const last10Task = tasksWithDepartments.slice(0, 10);
-
-    const totalOverdueTasks = tasksWithDepartments.filter(task => {
-      const statusLower = task.status?.toLowerCase();
-      return (statusLower !== 'complete' && task.stage !== 'completed') && new Date(task.date) < new Date();
-    }).length;
 
     const departmentPerformance = tasksWithDepartments.reduce((result, task) => {
       task.team.forEach((member) => {
@@ -689,7 +735,7 @@ const dashboardStatistics = asyncHandler(async (req, res) => {
       totalOverdueTasks,
       last10Task,
       users: isAdmin ? users : [],
-      tasks: groupedTasks,
+      tasks,
       graphData,
       departmentPerformance,
       kpiSummary,
